@@ -1,24 +1,21 @@
 import './style.css'
-import typescriptLogo from './typescript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
+const app = document.querySelector<HTMLDivElement>('#app')!
+
+function renderMenu() {
+  app.innerHTML = `
+    <div>
+      <h1>Gesture Game</h1>
+      <div>
+        <div>
+          <button id="confirm" onclick="startClicked()">Start</button>
+          <button id="settings" onclick="settingsClicked()">Settings</button>
+        </div>
+      </div>
+      <p>Select an option to continue</p>
     </div>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`
-
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+  `
+  ;(window as any).startClicked = () => (window.location.href = '/confirm.html')
+  ;(window as any).settingsClicked = () => (window.location.href = '/settings.html')
+}
+renderMenu()
