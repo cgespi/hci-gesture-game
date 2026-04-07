@@ -35,3 +35,7 @@ if (raw) {
 
 const back = document.getElementById('back') as HTMLButtonElement | null
 if (back) back.onclick = () => (window.location.href = '/')
+
+
+const start = document.getElementById('start') as HTMLButtonElement
+start.onclick = () => (window.location.href = '/game')
