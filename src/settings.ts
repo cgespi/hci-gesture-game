@@ -74,7 +74,7 @@ form.addEventListener('submit', (e) => {
   }
 
   sessionStorage.setItem('gameSettings', JSON.stringify(newSettings))
-  window.location.href = '/'
+  window.location.href = '/confirm'
 })
 
 // Cancel button
