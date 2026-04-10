@@ -1,4 +1,3 @@
-// minimal event-driven version (no RAF)
 import './style.css';
 const app = document.querySelector<HTMLElement>('#app')!;
 
@@ -18,7 +17,7 @@ status.textContent = 'Move the mouse';
 addHit.textContent = 'Add Hit';
 addMiss.textContent = 'Add Miss';
 
-Object.assign(root.style, { position: 'fixed', inset: '0', overflow: 'hidden', background: '#0f1113' });
+Object.assign(root.style, { position: 'fixed', inset: '0', overflow: 'hidden', background: '#307bc6' });
 Object.assign(canvas.style, { display: 'block', width: '100%', height: '100%' });
 Object.assign(exit.style, { position: 'absolute', right: '12px', top: '12px' });
 Object.assign(addHit.style, { position: 'absolute', right: '12px', top: '64px' });
@@ -43,6 +42,7 @@ function resize() {
   canvas.style.width = `${w}px`;
   canvas.style.height = `${h}px`;
   drawLine(); // redraw after resize
+  drawCannon();
 }
 window.addEventListener('resize', resize);
 resize();
@@ -59,6 +59,53 @@ canvas.addEventListener('mouseleave', () => { mouse.inside = false; status.textC
 
 function clear() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
+}
+
+function drawCannon(){
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight/2;
+  ctx.fillStyle = '#aaa';
+  ctx.fillRect(Math.round(cx - 25), Math.round(cy - 25), 50, 50);
+
+  ctx.fillStyle = "#c12d1c";
+  ctx.beginPath();
+  ctx.arc(cx,cy, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (mouse.inside) {
+    const angle = Math.atan2(mouse.y - cy, mouse.x - cx);
+
+    
+
+    const length = 120;
+    const x = cx + length * Math.cos(angle);
+    const y = cy + length * Math.sin(angle);
+    const x2 = cx + length * Math.cos(angle+0.03*Math.PI);
+    const y2 = cy + length * Math.sin(angle+0.03*Math.PI);
+    const x3 = cx + length * Math.cos(angle-0.03*Math.PI);
+    const y3 = cy + length * Math.sin(angle-0.03*Math.PI);
+
+
+    ctx.strokeStyle = "#c12d1c";
+    ctx.lineWidth = 18;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x3, y3);
+    ctx.stroke();
+
+    ctx.fillStyle = "#c12d1c";
+    ctx.beginPath();
+    ctx.arc(x,y, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.arc(x,y, 15, 0, Math.PI * 2);
+    ctx.fill();
+  } 
 }
 
 function drawLine() {
@@ -81,6 +128,8 @@ function drawLine() {
     ctx.fillStyle = '#fff';
     ctx.fillRect(Math.round(mouse.x - 5), Math.round(mouse.y - 5), 10, 10);
   }
+
+  drawCannon();
 }
 
 addHit.addEventListener('click', () => {
@@ -102,3 +151,4 @@ exit.addEventListener('click', () => {
   sessionStorage.setItem('gameStats', JSON.stringify(stats))
     window.location.href = '/postGame';
 });
+
