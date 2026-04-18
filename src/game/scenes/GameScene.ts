@@ -1,29 +1,36 @@
 import Phaser from 'phaser'
-import { GAME_HEIGHT, GAME_WIDTH, RegistryKey, SceneKey } from '../constants.ts'
-import { createCourtRenderer } from '../gameplay/CourtRenderer'
+import {
+  BALL_COLOR,
+  BALL_EASE_POWER,
+  BALL_MAX_RADIUS,
+  BALL_MIN_RADIUS,
+  HIT_ZONE_T0,
+  HIT_ZONE_T1,
+  INCOMING_SPEED_Z_PER_SEC,
+  INTERMISSION_SECONDS,
+  LANE_OFFSET,
+  MAX_MISSES,
+  MISSED_SECONDS,
+  NET_T,
+  RegistryKey,
+  RETURN_SPEED_Z_PER_SEC,
+  SceneKey,
+  DEPTH_HIT_BAND,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+} from '../constants.ts'
+import { createCourtRenderer, redrawHitBand } from '../gameplay/CourtRenderer'
 import { createDepthBall, type DepthBall } from '../gameplay/DepthBall'
 import { GameState, type GameState as GameStateType } from '../gameplay/GameState'
+import { defaultTableDims } from '../gameplay/tablePerspective'
 import type { InputController } from '../input/InputController'
 import { KeyboardInputController } from '../input/KeyboardInputController'
-
-const INTERMISSION_SECONDS = 0.6
-const MISSED_SECONDS = 0.85
-
-const INCOMING_SPEED_Z_PER_SEC = 0.55
-const RETURN_SPEED_Z_PER_SEC = 0.8
-
-// The player can respond only while the ball is in this screen-space band (near the bottom).
-// This is intentionally based on rendered Y so it matches what the player sees.
-const HIT_WINDOW_START_Y = GAME_HEIGHT - 150
-const HIT_WINDOW_END_Y = GAME_HEIGHT - 85
-
-const MAX_MISSES = 3
 
 /**
  * First-person “return the ball” prototype.
  *
  * No real 3D: we fake depth with a single z value (0 far → 1 near) mapped to
- * screen position and ball size.
+ * screen position and ball size using the same trapezoid table as the court.
  * {@link UIScene} is launched in parallel for the score readout.
  */
 export class GameScene extends Phaser.Scene {
@@ -34,54 +41,55 @@ export class GameScene extends Phaser.Scene {
 
   private ball!: DepthBall
   private wantsServe = true
+  /** -1 = incoming left lane (press A), +1 = right lane (press D). */
+  private incomingLane: -1 | 1 = 1
 
-  // Simple on-screen prompts (kept inside the gameplay scene).
+  private readonly tableDims = defaultTableDims()
+
   private hintText!: Phaser.GameObjects.Text
+  private laneHintText!: Phaser.GameObjects.Text
   private roundOverText!: Phaser.GameObjects.Text
   private keySpace!: Phaser.Input.Keyboard.Key
-  private hitWindowDebug!: Phaser.GameObjects.Graphics
+  private hitWindowBand!: Phaser.GameObjects.Graphics
 
   constructor() {
     super({ key: SceneKey.Game })
   }
 
   create() {
-    // Shared state for HUD (UIScene listens to registry changes).
     this.registry.set(RegistryKey.Score, 0)
     this.registry.set(RegistryKey.Misses, 0)
 
     this.inputController = new KeyboardInputController(this)
     this.keySpace = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
 
-    // Placeholder court + ball visuals.
-    createCourtRenderer(this, {
-      horizonY: 120,
-      nearY: GAME_HEIGHT - 60,
-      farHalfWidth: 95,
-      nearHalfWidth: 320,
-    })
+    createCourtRenderer(this, this.tableDims)
 
     this.ball = createDepthBall(this, {
-      horizonY: 120,
-      nearY: GAME_HEIGHT - 60,
-      minRadius: 6,
-      maxRadius: 34,
+      tableDims: this.tableDims,
+      minRadius: BALL_MIN_RADIUS,
+      maxRadius: BALL_MAX_RADIUS,
+      color: BALL_COLOR,
+      easePower: BALL_EASE_POWER,
+      laneOffset: LANE_OFFSET,
+      netT: NET_T,
     })
 
-    // Debug overlay: shows the valid hit window band in screen-space.
-    this.hitWindowDebug = this.add.graphics().setDepth(900)
-    this.hitWindowDebug.lineStyle(3, 0x00ff66, 1)
-    this.hitWindowDebug.strokeRect(
-      12,
-      HIT_WINDOW_START_Y,
-      GAME_WIDTH - 24,
-      HIT_WINDOW_END_Y - HIT_WINDOW_START_Y,
-    )
+    this.hitWindowBand = this.add.graphics().setDepth(DEPTH_HIT_BAND)
+    redrawHitBand(this.hitWindowBand, this.tableDims, HIT_ZONE_T0, HIT_ZONE_T1)
 
     this.hintText = this.add
-      .text(GAME_WIDTH / 2, 32, 'Hit when the ball is close: A = left, D = right', {
+      .text(GAME_WIDTH / 2, 32, 'When the ball enters the green band: A = left, D = right', {
         fontSize: '18px',
         color: '#ffffff',
+      })
+      .setOrigin(0.5)
+      .setDepth(1000)
+
+    this.laneHintText = this.add
+      .text(GAME_WIDTH / 2, 58, '', {
+        fontSize: '20px',
+        color: '#ffe66d',
       })
       .setOrigin(0.5)
       .setDepth(1000)
@@ -96,11 +104,9 @@ export class GameScene extends Phaser.Scene {
       .setDepth(1100)
       .setVisible(false)
 
-    // Overlay UI after gameplay objects exist so the registry already holds a score.
     this.scene.launch(SceneKey.UI)
     this.scene.bringToTop(SceneKey.UI)
 
-    // Start in intermission; we’ll serve immediately.
     this.enterState(GameState.Intermission)
   }
 
@@ -111,8 +117,12 @@ export class GameScene extends Phaser.Scene {
     this.inputController.update(dt)
 
     const isBallInHitWindow = (): boolean => {
-      const y = this.ball.circle.y
-      return y >= HIT_WINDOW_START_Y && y <= HIT_WINDOW_END_Y
+      const z = this.ball.z
+      return z >= HIT_ZONE_T0 && z <= HIT_ZONE_T1
+    }
+
+    const dirMatchesIncoming = (dir: 'left' | 'right'): boolean => {
+      return (dir === 'left' && this.incomingLane === -1) || (dir === 'right' && this.incomingLane === 1)
     }
 
     switch (this.state) {
@@ -132,36 +142,37 @@ export class GameScene extends Phaser.Scene {
         this.ball.z += INCOMING_SPEED_Z_PER_SEC * dt
         this.ball.updateVisual()
 
-        // Early swing penalty: pressing A/D before the hit window counts as a miss.
         const earlyDir = this.inputController.consumeHitDirection()
-        if (earlyDir && this.ball.circle.y < HIT_WINDOW_START_Y) {
+        if (earlyDir && this.ball.z < HIT_ZONE_T0) {
           this.onMissedBall()
           break
         }
 
-        if (this.ball.circle.y >= HIT_WINDOW_START_Y) {
+        if (this.ball.z >= HIT_ZONE_T0) {
           this.enterState(GameState.HitWindow)
         }
         break
       }
 
       case GameState.HitWindow: {
-        // Keep moving forward while the window is open.
         this.ball.z += INCOMING_SPEED_Z_PER_SEC * dt
         this.ball.updateVisual()
 
         const dir = this.inputController.consumeHitDirection()
         if (dir) {
-          if (isBallInHitWindow()) {
-            this.onSuccessfulHit(dir)
+          if (!isBallInHitWindow()) {
+            this.onMissedBall()
             break
           }
-          // Late swing penalty: input after the window counts as a miss.
-          this.onMissedBall()
+          if (!dirMatchesIncoming(dir)) {
+            this.onMissedBall()
+            break
+          }
+          this.onSuccessfulHit(dir)
           break
         }
 
-        if (this.ball.circle.y > HIT_WINDOW_END_Y) {
+        if (this.ball.z > HIT_ZONE_T1) {
           this.onMissedBall()
         }
         break
@@ -192,7 +203,6 @@ export class GameScene extends Phaser.Scene {
       }
 
       case GameState.RoundOver: {
-        // Let MenuScene handle “start” behavior; here we just wait for input.
         if (Phaser.Input.Keyboard.JustDown(this.keySpace)) {
           this.scene.stop(SceneKey.UI)
           this.scene.start(SceneKey.Menu)
@@ -211,28 +221,27 @@ export class GameScene extends Phaser.Scene {
       this.roundOverText.setText(`Round over\nScore: ${score}\n\nPress SPACE to return to menu`)
       this.roundOverText.setVisible(true)
       this.hintText.setVisible(false)
+      this.laneHintText.setVisible(false)
     } else {
       this.roundOverText.setVisible(false)
       this.hintText.setVisible(true)
+      this.laneHintText.setVisible(true)
     }
   }
 
   private serveIncomingBall(): void {
-    // Start far away and small.
     this.ball.z = 0
-
-    // Pick a slight initial lane toward center so hits feel readable.
-    const laneChoices = [-0.35, 0, 0.35]
-    this.ball.laneX = laneChoices[Math.floor(Math.random() * laneChoices.length)] ?? 0
+    this.incomingLane = Math.random() < 0.5 ? -1 : 1
+    this.ball.laneX = this.incomingLane
     this.ball.updateVisual()
+
+    this.laneHintText.setText(this.incomingLane === -1 ? 'Incoming: LEFT' : 'Incoming: RIGHT')
   }
 
   private onSuccessfulHit(direction: 'left' | 'right'): void {
     const score = (this.registry.get(RegistryKey.Score) as number | undefined) ?? 0
     this.registry.set(RegistryKey.Score, score + 1)
 
-    // On hit, “send it back” and commit to a left/right return lane.
-    // Clamp near the player so the return always starts from a “close” visual.
     this.ball.z = Phaser.Math.Clamp(this.ball.z, 0, 1)
     this.ball.laneX = direction === 'left' ? -1 : 1
 
@@ -243,7 +252,6 @@ export class GameScene extends Phaser.Scene {
     const misses = (this.registry.get(RegistryKey.Misses) as number | undefined) ?? 0
     this.registry.set(RegistryKey.Misses, misses + 1)
 
-    // Freeze the ball near the player for a moment so the miss feels registered.
     this.ball.z = 1
     this.ball.updateVisual()
 
