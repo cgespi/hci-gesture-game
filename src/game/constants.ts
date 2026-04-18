@@ -5,16 +5,31 @@
 export const GAME_WIDTH = 800
 export const GAME_HEIGHT = 600
 
-// --- Ping-pong table (2D perspective): far = top of screen, near = bottom ---
-
-/** Screen Y of the far end of the table (opponent side). */
-export const TABLE_TOP_Y = 130
-/** Screen Y of the near end of the table (player side). */
-export const TABLE_BOTTOM_Y = GAME_HEIGHT - 50
-/** Half-width of the table surface at the far end (pixels). */
-export const TABLE_TOP_HALF_WIDTH = 88
-/** Half-width of the table surface at the near end (pixels). */
-export const TABLE_BOTTOM_HALF_WIDTH = 300
+/**
+ * Fake first-person perspective for the 2D court (no real 3D).
+ *
+ * - Depth `zNorm` in [0, 1]: 0 = far (opponent / top of screen), 1 = near (player / below screen).
+ * - Y uses a power curve so most “table length” is compressed toward the player; `overscanBottom`
+ *   pushes the near baseline past the bottom edge so the player feels standing on the court.
+ * - Width grows with the same eased parameter so sidelines meet at a vanishing band near `horizonY`.
+ */
+export const COURT_PERSPECTIVE = {
+  /** Horizon as a fraction of screen height (smaller = table vanishes higher). */
+  horizonYRatio: 0.18,
+  /** Pixels past the canvas bottom for zNorm = 1 (near edge off-screen). */
+  overscanBottom: 220,
+  /** Full court width in pixels at the far end (narrow = strong perspective). */
+  farCourtWidth: GAME_WIDTH * 0.22,
+  /** Full court width at the near end (may exceed canvas). */
+  nearCourtWidth: GAME_WIDTH * 1.05,
+  /** Shared exponent on zNorm for Y and width ( >1 exaggerates the near half ). */
+  depthExponent: 1.7,
+  /** Horizontal guide stripes; evenly spaced in court zNorm, not in screen Y. */
+  depthStripeCount: 5,
+  /** Service / guide lines: depth slices parallel to the net (court zNorm). */
+  serviceLineZ0: 0.32,
+  serviceLineZ1: 0.68,
+} as const
 
 /** Horizontal placement for left/right lanes: fraction of local half-width (0–1). */
 export const LANE_OFFSET = 0.72
@@ -43,7 +58,7 @@ export const MAX_MISSES = 3
 export const BALL_MIN_RADIUS = 6
 export const BALL_MAX_RADIUS = 34
 export const BALL_COLOR = 0xffe66d
-/** 1 = linear depth mapping; >1 exaggerates motion near the player. */
+/** Kept for API compatibility; ball motion follows {@link COURT_PERSPECTIVE} projection. */
 export const BALL_EASE_POWER = 1
 
 export const BALL_SHADOW_ALPHA = 0.35

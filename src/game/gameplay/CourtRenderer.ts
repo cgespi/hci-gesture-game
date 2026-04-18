@@ -5,6 +5,7 @@ import {
   COLOR_ROOM_BG,
   COLOR_TABLE_LINE,
   COLOR_TABLE_SURFACE,
+  COURT_PERSPECTIVE,
   DEPTH_NET,
   DEPTH_ROOM_BG,
   DEPTH_TABLE,
@@ -15,6 +16,7 @@ import {
 import {
   defaultTableDims,
   hitBandQuad,
+  projectCourtPoint,
   tableSurfaceQuad,
   trapezoidRow,
   type TableDims,
@@ -32,9 +34,18 @@ function resolveDims(options: CourtOptions): TableDims {
   return { ...defaultTableDims(), ...options }
 }
 
+function strokeFullWidthRow(g: Phaser.GameObjects.Graphics, dims: TableDims, zNorm: number, lineWidth: number, color: number, alpha: number): void {
+  const row = trapezoidRow(dims, zNorm)
+  g.lineStyle(lineWidth, color, alpha)
+  g.beginPath()
+  g.moveTo(row.leftX, row.y)
+  g.lineTo(row.rightX, row.y)
+  g.strokePath()
+}
+
 /**
- * Draws a first-person ping-pong table (trapezoid surface + lines) and a net at {@link NET_T}.
- * All vector graphics; no external assets.
+ * Draws a first-person ping-pong table (perspective quad + lines) and a net at {@link NET_T}.
+ * Geometry comes from {@link projectCourtPoint}; all vector graphics, no external assets.
  */
 export function createCourtRenderer(scene: Phaser.Scene, options: CourtOptions = {}): CourtView {
   const dims = resolveDims(options)
@@ -46,7 +57,7 @@ export function createCourtRenderer(scene: Phaser.Scene, options: CourtOptions =
 
   const table = scene.add.graphics().setDepth(DEPTH_TABLE)
 
-  // Table surface (two triangles).
+  // Table surface (two triangles from projected corners).
   table.fillStyle(COLOR_TABLE_SURFACE, 1)
   table.beginPath()
   table.moveTo(q.farLeftX, q.farY)
@@ -61,7 +72,7 @@ export function createCourtRenderer(scene: Phaser.Scene, options: CourtOptions =
   table.closePath()
   table.fillPath()
 
-  // Sidelines + near/far end lines.
+  // Sidelines and end lines (straight in court space → screen chords).
   table.lineStyle(3, COLOR_TABLE_LINE, 0.9)
   table.beginPath()
   table.moveTo(q.farLeftX, q.farY)
@@ -74,23 +85,28 @@ export function createCourtRenderer(scene: Phaser.Scene, options: CourtOptions =
   table.lineTo(q.nearRightX, q.nearY)
   table.strokePath()
 
-  // Center lengthwise line.
+  // Center lengthwise line (court midline at xNorm = 0).
+  const cFar = projectCourtPoint(dims, 0, 0)
+  const cNear = projectCourtPoint(dims, 0, 1)
   table.lineStyle(2, COLOR_TABLE_LINE, 0.45)
   table.beginPath()
-  table.moveTo(dims.centerX, dims.topY)
-  table.lineTo(dims.centerX, dims.bottomY)
+  table.moveTo(cFar.x, cFar.y)
+  table.lineTo(cNear.x, cNear.y)
   table.strokePath()
 
-  // Subtle depth stripes (optional readability).
+  // Service / guide lines (parallel to far edge at fixed depths).
+  strokeFullWidthRow(table, dims, COURT_PERSPECTIVE.serviceLineZ0, 1, COLOR_TABLE_LINE, 0.35)
+  strokeFullWidthRow(table, dims, COURT_PERSPECTIVE.serviceLineZ1, 1, COLOR_TABLE_LINE, 0.35)
+
+  // Subtle net line on the table plane (under the net mesh).
+  strokeFullWidthRow(table, dims, NET_T, 1, COLOR_TABLE_LINE, 0.22)
+
+  // Depth stripes: evenly spaced in zNorm so spacing matches court depth, not screen Y.
   table.lineStyle(1, COLOR_TABLE_LINE, 0.12)
-  const steps = 5
+  const steps = COURT_PERSPECTIVE.depthStripeCount
   for (let i = 1; i < steps; i++) {
     const t = i / steps
-    const row = trapezoidRow(dims, t)
-    table.beginPath()
-    table.moveTo(row.leftX, row.y)
-    table.lineTo(row.rightX, row.y)
-    table.strokePath()
+    strokeFullWidthRow(table, dims, t, 1, COLOR_TABLE_LINE, 0.12)
   }
 
   // Net: separate layer so ball can sort above/below.
@@ -101,7 +117,6 @@ export function createCourtRenderer(scene: Phaser.Scene, options: CourtOptions =
   const postDrop = 6
   const postOut = 10
 
-  // Posts just outside the table width.
   net.lineStyle(4, COLOR_TABLE_LINE, 0.85)
   net.beginPath()
   net.moveTo(netRow.leftX - postOut, yNet + postDrop)
@@ -110,14 +125,12 @@ export function createCourtRenderer(scene: Phaser.Scene, options: CourtOptions =
   net.lineTo(netRow.rightX + postOut, yNet - postLift)
   net.strokePath()
 
-  // Top tape.
   net.lineStyle(5, COLOR_NET_TOP, 0.95)
   net.beginPath()
   net.moveTo(netRow.leftX, yNet)
   net.lineTo(netRow.rightX, yNet)
   net.strokePath()
 
-  // Mesh: vertical segments.
   const meshLines = 9
   net.lineStyle(1, COLOR_NET_MESH, 0.22)
   for (let i = 0; i <= meshLines; i++) {
@@ -128,7 +141,6 @@ export function createCourtRenderer(scene: Phaser.Scene, options: CourtOptions =
     net.lineTo(x, yNet + 9)
     net.strokePath()
   }
-  // Mesh horizontals.
   net.lineStyle(1, COLOR_NET_MESH, 0.18)
   for (const dy of [-5, 0, 5]) {
     net.beginPath()
