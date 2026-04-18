@@ -17,4 +17,6 @@ export const SceneKey = {
 export const RegistryKey = {
   /** Current player score (number). */
   Score: 'score',
+  /** Number of misses this round (number). */
+  Misses: 'misses',
 } as const
