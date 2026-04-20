@@ -111,6 +111,7 @@ export const SceneKey = {
   Menu: 'Menu',
   Game: 'Game',
   UI: 'UI',
+  Settings: 'Settings',
 } as const
 
 /** Registry keys for values shared between scenes (e.g. Game writes, UI reads). */

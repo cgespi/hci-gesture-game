@@ -3,6 +3,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from './constants.ts'
 import { BootScene } from './scenes/BootScene.ts'
 import { GameScene } from './scenes/GameScene.ts'
 import { MenuScene } from './scenes/MenuScene.ts'
+import { SettingsScene } from './scenes/SettingsScene.ts'
 import { UIScene } from './scenes/UIScene.ts'
 
 /**
@@ -26,6 +27,6 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [BootScene, MenuScene, GameScene, UIScene],
+    scene: [BootScene, MenuScene, SettingsScene, GameScene, UIScene],
   }
 }

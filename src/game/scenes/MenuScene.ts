@@ -18,11 +18,19 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
 
     const hint = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 24, 'Press SPACE or click to play', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 24, 'Press SPACE to play', {
         fontSize: '20px',
         color: '#aabbcc',
       })
       .setOrigin(0.5)
+
+    const settings = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 64, 'Settings', {
+        fontSize: '20px',
+        color: '#aabbcc',
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
 
     const startGame = () => {
       hint.setColor('#8899aa')
@@ -30,6 +38,9 @@ export class MenuScene extends Phaser.Scene {
     }
 
     this.input.keyboard!.once('keydown-SPACE', startGame)
-    this.input.once('pointerdown', startGame)
+
+    settings.on('pointerdown', () => {
+      this.scene.start(SceneKey.Settings)
+    })
   }
 }
