@@ -1,4 +1,4 @@
-export type HitDirection = 'left' | 'right'
+export type HitAction = 'left' | 'center' | 'right'
 
 /**
  * Input abstraction layer.
@@ -14,11 +14,11 @@ export interface InputController {
   update(dtSeconds: number): void
 
   /**
-   * Returns a hit direction triggered during the *current frame* (since the last `update()` call).
+   * Returns a hit action triggered during the *current frame* (since the last `update()` call).
    *
    * Important: this should NOT “queue up” inputs across time, because gameplay needs to
    * distinguish “pressed at the right moment” vs “pressed early”.
    */
-  consumeHitDirection(): HitDirection | null
+  consumeHitAction(): HitAction | null
 }
 

@@ -9,7 +9,7 @@
  * near baseline can sit below the canvas—player feels inside the court, not above a board.
  */
 
-import { COURT_PERSPECTIVE, GAME_HEIGHT, GAME_WIDTH } from '../constants.ts'
+import { GAME_HEIGHT, GAME_WIDTH } from '../constants.ts'
 
 /** Layout + projection parameters built from {@link COURT_PERSPECTIVE} and game size. */
 export type TableDims = {
@@ -159,7 +159,17 @@ export function widthScaleAtNear(dims: TableDims): number {
 
 /** Default court layout from {@link COURT_PERSPECTIVE}. */
 export function defaultTableDims(): TableDims {
-  const p = COURT_PERSPECTIVE
+  // Legacy module retained for reference; no longer used by the cannon prototype.
+  const p = {
+    horizonYRatio: 0.18,
+    overscanBottom: 220,
+    farCourtWidth: GAME_WIDTH * 0.22,
+    nearCourtWidth: GAME_WIDTH * 1.05,
+    depthExponent: 1.7,
+    depthStripeCount: 5,
+    serviceLineZ0: 0.32,
+    serviceLineZ1: 0.68,
+  } as const
   const centerX = GAME_WIDTH / 2
   const horizonY = GAME_HEIGHT * p.horizonYRatio
   const farHalf = p.farCourtWidth / 2

@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import type { HitDirection, InputController } from './InputController'
+import type { HitAction, InputController } from './InputController'
 
 /**
  * Keyboard implementation of InputController:
@@ -12,7 +12,7 @@ export class KeyboardInputController implements InputController {
   private readonly keyA: Phaser.Input.Keyboard.Key
   private readonly keyD: Phaser.Input.Keyboard.Key
 
-  private hitThisFrame: HitDirection | null = null
+  private hitThisFrame: HitAction | null = null
 
   constructor(scene: Phaser.Scene) {
     const keyboard = scene.input.keyboard
@@ -32,7 +32,7 @@ export class KeyboardInputController implements InputController {
     if (Phaser.Input.Keyboard.JustDown(this.keyD)) this.hitThisFrame = 'right'
   }
 
-  consumeHitDirection(): HitDirection | null {
+  consumeHitAction(): HitAction | null {
     return this.hitThisFrame
   }
 }

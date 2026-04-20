@@ -1,9 +1,7 @@
 export const GameState = {
-  Intermission: 'Intermission',
-  BallIncoming: 'BallIncoming',
-  HitWindow: 'HitWindow',
-  BallReturned: 'BallReturned',
-  MissedBall: 'MissedBall',
+  PreparingShot: 'PreparingShot',
+  BallInFlight: 'BallInFlight',
+  ResolvingShot: 'ResolvingShot',
   RoundOver: 'RoundOver',
 } as const
 

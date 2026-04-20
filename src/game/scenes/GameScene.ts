@@ -1,98 +1,101 @@
 import Phaser from 'phaser'
 import {
   BALL_COLOR,
-  BALL_EASE_POWER,
-  BALL_MAX_RADIUS,
-  BALL_MIN_RADIUS,
-  HIT_ZONE_T0,
-  HIT_ZONE_T1,
-  INCOMING_SPEED_Z_PER_SEC,
-  INTERMISSION_SECONDS,
-  LANE_OFFSET,
-  MAX_MISSES,
-  MISSED_SECONDS,
-  NET_T,
-  RegistryKey,
-  RETURN_SPEED_Z_PER_SEC,
-  SceneKey,
-  DEPTH_HIT_BAND,
+  BALL_RADIUS,
+  CANNON_COLOR,
+  CANNON_HEIGHT,
+  CANNON_WIDTH,
+  DEBUG_SHOW_HIT_ZONE,
   GAME_HEIGHT,
   GAME_WIDTH,
+  GROUND_COLOR,
+  GROUND_HEIGHT_RATIO,
+  HIT_ZONE_COLOR,
+  HIT_ZONE_FILL_ALPHA,
+  HIT_ZONE_HEIGHT,
+  HIT_ZONE_STROKE_ALPHA,
+  HIT_ZONE_WIDTH,
+  HIT_ZONE_Y,
+  laneX,
+  type Lane,
+  RegistryKey,
+  RESET_DELAY_MS,
+  SceneKey,
+  SHOT_TRAVEL_MS,
+  SKY_COLOR,
+  STARTING_LIVES,
 } from '../constants.ts'
-import { createCourtRenderer, redrawHitBand } from '../gameplay/CourtRenderer'
-import { createDepthBall, type DepthBall } from '../gameplay/DepthBall'
 import { GameState, type GameState as GameStateType } from '../gameplay/GameState'
-import { defaultTableDims } from '../gameplay/tablePerspective'
 import type { InputController } from '../input/InputController'
 import { KeyboardInputController } from '../input/KeyboardInputController'
 
 /**
- * First-person “return the ball” prototype.
+ * Lane-based “cannon reaction” prototype.
  *
- * No real 3D: we fake depth with a single z value (0 far → 1 near) mapped to
- * screen position and ball size using the same trapezoid table as the court.
- * {@link UIScene} is launched in parallel for the score readout.
+ * The cannon fires a ball into one of three lanes, and the player must hit with
+ * correct timing while the ball overlaps the temporary “REACT NOW!” hit zone.
  */
 export class GameScene extends Phaser.Scene {
   private inputController!: InputController
 
-  private state: GameStateType = GameState.Intermission
-  private stateTimeSeconds = 0
+  private state: GameStateType = GameState.PreparingShot
+  private stateTimeMs = 0
 
-  private ball!: DepthBall
-  private wantsServe = true
-  /** -1 = incoming left lane (press A), +1 = right lane (press D). */
-  private incomingLane: -1 | 1 = 1
+  private ball!: Phaser.GameObjects.Arc
+  private cannon!: Phaser.GameObjects.Rectangle
 
-  private readonly tableDims = defaultTableDims()
+  private hitZoneRect!: Phaser.GameObjects.Rectangle
+  private hitZoneLabel!: Phaser.GameObjects.Text
 
-  private hintText!: Phaser.GameObjects.Text
-  private laneHintText!: Phaser.GameObjects.Text
+  private targetLane: Lane = 'center'
+  private shotTween: Phaser.Tweens.Tween | null = null
+  private shotResolved = false
+
   private roundOverText!: Phaser.GameObjects.Text
   private keySpace!: Phaser.Input.Keyboard.Key
-  private hitWindowBand!: Phaser.GameObjects.Graphics
 
   constructor() {
     super({ key: SceneKey.Game })
   }
 
   create() {
-    this.registry.set(RegistryKey.Score, 0)
+    this.registry.set(RegistryKey.Hits, 0)
     this.registry.set(RegistryKey.Misses, 0)
+    this.registry.set(RegistryKey.Lives, STARTING_LIVES)
+    this.registry.set(RegistryKey.TargetLane, '—')
 
     this.inputController = new KeyboardInputController(this)
     this.keySpace = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
 
-    createCourtRenderer(this, this.tableDims)
+    this.cameras.main.setBackgroundColor(SKY_COLOR)
 
-    this.ball = createDepthBall(this, {
-      tableDims: this.tableDims,
-      minRadius: BALL_MIN_RADIUS,
-      maxRadius: BALL_MAX_RADIUS,
-      color: BALL_COLOR,
-      easePower: BALL_EASE_POWER,
-      laneOffset: LANE_OFFSET,
-      netT: NET_T,
-    })
+    const groundHeight = Math.round(GAME_HEIGHT * GROUND_HEIGHT_RATIO)
+    const groundTopY = GAME_HEIGHT - groundHeight
+    this.add
+      .rectangle(0, groundTopY, GAME_WIDTH, groundHeight, GROUND_COLOR)
+      .setOrigin(0, 0)
 
-    this.hitWindowBand = this.add.graphics().setDepth(DEPTH_HIT_BAND)
-    redrawHitBand(this.hitWindowBand, this.tableDims, HIT_ZONE_T0, HIT_ZONE_T1)
+    // Place cannon directly on the sky/field boundary line.
+    const cannonY = groundTopY
+    this.cannon = this.add
+      .rectangle(GAME_WIDTH / 2, cannonY, CANNON_WIDTH, CANNON_HEIGHT, CANNON_COLOR)
+      .setOrigin(0.5, 1)
 
-    this.hintText = this.add
-      .text(GAME_WIDTH / 2, 32, 'When the ball enters the green band: A = left, D = right', {
-        fontSize: '18px',
-        color: '#ffffff',
-      })
-      .setOrigin(0.5)
-      .setDepth(1000)
+    this.ball = this.add.circle(this.cannon.x, this.cannon.y - CANNON_HEIGHT - BALL_RADIUS, BALL_RADIUS, BALL_COLOR)
 
-    this.laneHintText = this.add
-      .text(GAME_WIDTH / 2, 58, '', {
-        fontSize: '20px',
-        color: '#ffe66d',
-      })
-      .setOrigin(0.5)
-      .setDepth(1000)
+    this.hitZoneRect = this.add
+      .rectangle(0, HIT_ZONE_Y, HIT_ZONE_WIDTH, HIT_ZONE_HEIGHT, HIT_ZONE_COLOR, HIT_ZONE_FILL_ALPHA)
+      .setOrigin(0.5, 0)
+      .setStrokeStyle(3, HIT_ZONE_COLOR, HIT_ZONE_STROKE_ALPHA)
+
+    this.hitZoneLabel = this.add
+      .text(0, HIT_ZONE_Y + 12, 'REACT NOW!', { fontSize: '20px', color: '#ffffff' })
+      .setOrigin(0.5, 0)
+
+    if (!DEBUG_SHOW_HIT_ZONE) {
+      this.hitZoneRect.setVisible(false)
+      this.hitZoneLabel.setVisible(false)
+    }
 
     this.roundOverText = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
@@ -107,96 +110,43 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch(SceneKey.UI)
     this.scene.bringToTop(SceneKey.UI)
 
-    this.enterState(GameState.Intermission)
+    this.enterState(GameState.PreparingShot)
   }
 
   update(_time: number, deltaMs: number): void {
-    const dt = Math.min(deltaMs / 1000, 1 / 20)
-    this.stateTimeSeconds += dt
+    const dtMs = Math.min(deltaMs, 50)
+    this.stateTimeMs += dtMs
 
-    this.inputController.update(dt)
+    this.inputController.update(dtMs / 1000)
 
-    const isBallInHitWindow = (): boolean => {
-      const z = this.ball.z
-      return z >= HIT_ZONE_T0 && z <= HIT_ZONE_T1
-    }
-
-    const dirMatchesIncoming = (dir: 'left' | 'right'): boolean => {
-      return (dir === 'left' && this.incomingLane === -1) || (dir === 'right' && this.incomingLane === 1)
-    }
+    const action = this.inputController.consumeHitAction()
+    if (action) this.tryResolveShotFromInput(action)
 
     switch (this.state) {
-      case GameState.Intermission: {
-        if (this.wantsServe) {
-          this.serveIncomingBall()
-          this.wantsServe = false
-        }
-
-        if (this.stateTimeSeconds >= INTERMISSION_SECONDS) {
-          this.enterState(GameState.BallIncoming)
+      case GameState.PreparingShot: {
+        if (this.stateTimeMs >= RESET_DELAY_MS) {
+          this.fireShot()
+          this.enterState(GameState.BallInFlight)
         }
         break
       }
 
-      case GameState.BallIncoming: {
-        this.ball.z += INCOMING_SPEED_Z_PER_SEC * dt
-        this.ball.updateVisual()
-
-        const earlyDir = this.inputController.consumeHitDirection()
-        if (earlyDir && this.ball.z < HIT_ZONE_T0) {
-          this.onMissedBall()
-          break
-        }
-
-        if (this.ball.z >= HIT_ZONE_T0) {
-          this.enterState(GameState.HitWindow)
+      case GameState.BallInFlight: {
+        // If the tween finished without resolution, it’s a late miss.
+        if (this.shotTween && !this.shotTween.isPlaying() && !this.shotResolved) {
+          this.onMissedShot()
+          this.enterState(GameState.ResolvingShot)
         }
         break
       }
 
-      case GameState.HitWindow: {
-        this.ball.z += INCOMING_SPEED_Z_PER_SEC * dt
-        this.ball.updateVisual()
-
-        const dir = this.inputController.consumeHitDirection()
-        if (dir) {
-          if (!isBallInHitWindow()) {
-            this.onMissedBall()
-            break
-          }
-          if (!dirMatchesIncoming(dir)) {
-            this.onMissedBall()
-            break
-          }
-          this.onSuccessfulHit(dir)
-          break
-        }
-
-        if (this.ball.z > HIT_ZONE_T1) {
-          this.onMissedBall()
-        }
-        break
-      }
-
-      case GameState.BallReturned: {
-        this.ball.z -= RETURN_SPEED_Z_PER_SEC * dt
-        this.ball.updateVisual()
-
-        if (this.ball.z <= 0) {
-          this.wantsServe = true
-          this.enterState(GameState.Intermission)
-        }
-        break
-      }
-
-      case GameState.MissedBall: {
-        if (this.stateTimeSeconds >= MISSED_SECONDS) {
-          const misses = (this.registry.get(RegistryKey.Misses) as number | undefined) ?? 0
-          if (misses >= MAX_MISSES) {
+      case GameState.ResolvingShot: {
+        if (this.stateTimeMs >= RESET_DELAY_MS) {
+          const lives = this.getLives()
+          if (lives <= 0) {
             this.enterState(GameState.RoundOver)
           } else {
-            this.wantsServe = true
-            this.enterState(GameState.Intermission)
+            this.enterState(GameState.PreparingShot)
           }
         }
         break
@@ -214,47 +164,95 @@ export class GameScene extends Phaser.Scene {
 
   private enterState(next: GameStateType): void {
     this.state = next
-    this.stateTimeSeconds = 0
+    this.stateTimeMs = 0
 
     if (next === GameState.RoundOver) {
-      const score = (this.registry.get(RegistryKey.Score) as number | undefined) ?? 0
-      this.roundOverText.setText(`Round over\nScore: ${score}\n\nPress SPACE to return to menu`)
+      const hits = this.getHits()
+      const misses = this.getMisses()
+      this.roundOverText.setText(`Game over\nHits: ${hits}\nMisses: ${misses}\n\nPress SPACE to return to menu`)
       this.roundOverText.setVisible(true)
-      this.hintText.setVisible(false)
-      this.laneHintText.setVisible(false)
     } else {
       this.roundOverText.setVisible(false)
-      this.hintText.setVisible(true)
-      this.laneHintText.setVisible(true)
     }
   }
 
-  private serveIncomingBall(): void {
-    this.ball.z = 0
-    this.incomingLane = Math.random() < 0.5 ? -1 : 1
-    this.ball.laneX = this.incomingLane
-    this.ball.updateVisual()
+  private fireShot(): void {
+    this.shotResolved = false
+    if (this.shotTween) {
+      this.shotTween.stop()
+      this.shotTween = null
+    }
 
-    this.laneHintText.setText(this.incomingLane === -1 ? 'Incoming: LEFT' : 'Incoming: RIGHT')
+    const lanes: Lane[] = ['left', 'center', 'right']
+    this.targetLane = Phaser.Utils.Array.GetRandom(lanes)
+    this.registry.set(RegistryKey.TargetLane, this.targetLane)
+
+    const x = laneX(this.targetLane)
+    this.hitZoneRect.setX(x)
+    this.hitZoneLabel.setX(x)
+
+    // Reset ball to cannon mouth.
+    this.ball.setPosition(this.cannon.x, this.cannon.y - CANNON_HEIGHT - BALL_RADIUS)
+
+    // Travel upward/outward toward lane; finish slightly above the hit zone so “late” is clear.
+    this.shotTween = this.tweens.add({
+      targets: this.ball,
+      x,
+      y: HIT_ZONE_Y - BALL_RADIUS * 2,
+      duration: SHOT_TRAVEL_MS,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        if (this.shotResolved) return
+        this.onMissedShot()
+        this.enterState(GameState.ResolvingShot)
+      },
+    })
   }
 
-  private onSuccessfulHit(direction: 'left' | 'right'): void {
-    const score = (this.registry.get(RegistryKey.Score) as number | undefined) ?? 0
-    this.registry.set(RegistryKey.Score, score + 1)
+  private tryResolveShotFromInput(action: 'left' | 'center' | 'right'): void {
+    if (this.state !== GameState.BallInFlight) return
+    if (this.shotResolved) return
 
-    this.ball.z = Phaser.Math.Clamp(this.ball.z, 0, 1)
-    this.ball.laneX = direction === 'left' ? -1 : 1
+    const isOverlapping = Phaser.Geom.Intersects.RectangleToRectangle(this.ball.getBounds(), this.hitZoneRect.getBounds())
 
-    this.enterState(GameState.BallReturned)
+    const laneMatches =
+      this.targetLane === 'center'
+        ? action === 'left' || action === 'right' || action === 'center'
+        : action === this.targetLane
+
+    if (isOverlapping && laneMatches) {
+      this.onSuccessfulHit()
+    } else {
+      this.onMissedShot()
+    }
+
+    this.enterState(GameState.ResolvingShot)
   }
 
-  private onMissedBall(): void {
-    const misses = (this.registry.get(RegistryKey.Misses) as number | undefined) ?? 0
+  private onSuccessfulHit(): void {
+    this.shotResolved = true
+    const hits = this.getHits()
+    this.registry.set(RegistryKey.Hits, hits + 1)
+  }
+
+  private onMissedShot(): void {
+    this.shotResolved = true
+    const misses = this.getMisses()
     this.registry.set(RegistryKey.Misses, misses + 1)
 
-    this.ball.z = 1
-    this.ball.updateVisual()
+    const lives = this.getLives()
+    this.registry.set(RegistryKey.Lives, Math.max(0, lives - 1))
+  }
 
-    this.enterState(GameState.MissedBall)
+  private getHits(): number {
+    return ((this.registry.get(RegistryKey.Hits) as number | undefined) ?? 0) | 0
+  }
+
+  private getMisses(): number {
+    return ((this.registry.get(RegistryKey.Misses) as number | undefined) ?? 0) | 0
+  }
+
+  private getLives(): number {
+    return ((this.registry.get(RegistryKey.Lives) as number | undefined) ?? STARTING_LIVES) | 0
   }
 }
