@@ -111,6 +111,7 @@ export const SceneKey = {
   Menu: 'Menu',
   Game: 'Game',
   UI: 'UI',
+  Confirm: 'Confirm',
   Settings: 'Settings',
 } as const
 
