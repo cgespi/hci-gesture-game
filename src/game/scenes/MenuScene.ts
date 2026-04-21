@@ -17,30 +17,27 @@ export class MenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
 
-    const hint = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 24, 'Press SPACE to play', {
+    this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 24, 'Play', {
         fontSize: '20px',
         color: '#aabbcc',
       })
       .setOrigin(0.5)
+      .setInteractive({useHandCursor: true})
+            .on('pointerdown',() => {
+                this.scene.start(SceneKey.Confirm)
+            })
 
-    const settings = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 64, 'Settings', {
+    this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 40, 'Settings', {
         fontSize: '20px',
         color: '#aabbcc',
       })
       .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
+      .setInteractive({useHandCursor: true})
+            .on('pointerdown',() => {
+                this.scene.start(SceneKey.Settings)
+            })
 
-    const startGame = () => {
-      hint.setColor('#8899aa')
-      this.scene.start(SceneKey.Game)
-    }
-
-    this.input.keyboard!.once('keydown-SPACE', startGame)
-
-    settings.on('pointerdown', () => {
-      this.scene.start(SceneKey.Settings)
-    })
   }
 }
