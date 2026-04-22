@@ -125,4 +125,9 @@ export const RegistryKey = {
   Lives: 'lives',
   /** Current target lane label (string). */
   TargetLane: 'targetLane',
+  BallSpeed: 'ballSpeed',
+  LaunchDelay: 'launchDelay',
+  StreakThreshhold: 'streakThreshhold',
+  Difficulty: 'difficulty',
+  GrowthSpeed: 'growthSpeed',
 } as const
