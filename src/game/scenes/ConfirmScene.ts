@@ -17,16 +17,23 @@ export class ConfirmScene extends Phaser.Scene {
         }
 
          this.add
-            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, 'Confirm Page', {
+            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, 'Confirm Page', {
                 fontSize: '36px',
                 color: '#eeeeff',
             })
             .setOrigin(0.5)
 
         this.add
-            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 , this.registry.get('difficulty') + ' difficulty', {
+            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40 , this.registry.get('difficulty') + ' difficulty', {
                 fontSize: '20px',
                 color: '#ffe448',
+            })
+            .setOrigin(0.5)
+
+        this.add 
+            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2  , this.registry.get('growthSpeed')*100 + '% difficulty increase per hitstreak cycle' , {
+                fontSize: '15px',
+                color: '#487cff',
             })
             .setOrigin(0.5)
 
