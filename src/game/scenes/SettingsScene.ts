@@ -93,6 +93,38 @@ export class SettingsScene extends Phaser.Scene {
         }
 
         this.add
+            .text(GAME_WIDTH/2, GAME_HEIGHT/2-20, 'Growth Speed',{
+                fontSize: '20px',
+                color: '#eeeeff',
+            })  
+            .setOrigin(0.5)
+        //slider
+        const slider = this.add.graphics();
+        slider.fillStyle(0x666666, 1);
+        slider.fillRect(300 , 300, 200, 5);
+        
+        const widget = this.add.graphics();
+        widget.fillStyle(0xffffff, 1);
+        widget.x = (this.registry.get('growthSpeed') * 200) + 300;
+        widget.y = 303;
+        widget.fillCircle(0, 0, 10);
+        widget.setInteractive(  
+            new Phaser.Geom.Circle(0, 0, 10),
+            Phaser.Geom.Circle.Contains
+        );
+        widget.input.draggable = true;
+        widget.input.cursor = "pointer";
+
+        this.input.setDraggable(widget);
+
+        widget.on("drag", (pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+            const sliderValue = Math.round(Phaser.Math.Clamp(dragX, 300, 500));
+            widget.x = sliderValue;
+
+            this.registry.set(RegistryKey.GrowthSpeed, (sliderValue - 300) / 200);
+        });     
+
+        this.add
             .text(GAME_WIDTH/2, GAME_HEIGHT/2+200, 'Confirm',{
                 fontSize: '20px',
                 color: '#eeeeff',
