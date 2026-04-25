@@ -69,6 +69,7 @@ export class GameScene extends Phaser.Scene {
 
   private roundOverText!: Phaser.GameObjects.Text
   private keySpace!: Phaser.Input.Keyboard.Key
+  private keyEnter!: Phaser.Input.Keyboard.Key
 
   constructor() {
     super({ key: SceneKey.Game })
@@ -82,6 +83,7 @@ export class GameScene extends Phaser.Scene {
 
     this.inputController = new KeyboardInputController(this)
     this.keySpace = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+    this.keyEnter = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
 
     this.cameras.main.setBackgroundColor(SKY_COLOR)
 
@@ -184,7 +186,9 @@ export class GameScene extends Phaser.Scene {
       case GameState.RoundOver: {
         if (Phaser.Input.Keyboard.JustDown(this.keySpace)) {
           this.scene.stop(SceneKey.UI)
-          this.scene.start(SceneKey.Menu)
+          this.scene.start(SceneKey.Settings)
+        } else if (Phaser.Input.Keyboard.JustDown(this.keyEnter)){
+          //restart the game with current settings
         }
         break
       }
@@ -205,7 +209,7 @@ export class GameScene extends Phaser.Scene {
     if (next === GameState.RoundOver) {
       const hits = this.getHits()
       const misses = this.getMisses()
-      this.roundOverText.setText(`Game over\nHits: ${hits}\nMisses: ${misses}\n\nPress SPACE to return to menu`)
+      this.roundOverText.setText(`Game over\nHits: ${hits}\nMisses: ${misses}\n\nPress Enter to restart\n Press Space to edit settings`)
       this.roundOverText.setVisible(true)
     } else {
       this.roundOverText.setVisible(false)
