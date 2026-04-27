@@ -1,6 +1,8 @@
 export const GameState = {
   PreparingShot: 'PreparingShot',
   BallInFlight: 'BallInFlight',
+  HitReturn: 'HitReturn',
+  MissFall: 'MissFall',
   ResolvingShot: 'ResolvingShot',
   RoundOver: 'RoundOver',
 } as const

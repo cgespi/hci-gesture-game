@@ -112,12 +112,15 @@ export class SettingsScene extends Phaser.Scene {
             new Phaser.Geom.Circle(0, 0, 10),
             Phaser.Geom.Circle.Contains
         );
-        widget.input.draggable = true;
-        widget.input.cursor = "pointer";
+        const widgetInput = widget.input;
+        if (widgetInput) {
+            widgetInput.draggable = true;
+            widgetInput.cursor = "pointer";
+        }
 
         this.input.setDraggable(widget);
 
-        widget.on("drag", (pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+        widget.on("drag", (_pointer: Phaser.Input.Pointer, dragX: number, _dragY: number) => {
             const sliderValue = Math.round(Phaser.Math.Clamp(dragX, 300, 500));
             widget.x = sliderValue;
 

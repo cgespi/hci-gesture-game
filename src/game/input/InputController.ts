@@ -1,4 +1,10 @@
 export type HitAction = 'left' | 'center' | 'right'
+export type HitSource = 'keyboard' | 'webcam'
+export type HitInputEvent = {
+  action: HitAction
+  source: HitSource
+  timestampMs: number
+}
 
 /**
  * Input abstraction layer.
@@ -19,6 +25,12 @@ export interface InputController {
    * Important: this should NOT “queue up” inputs across time, because gameplay needs to
    * distinguish “pressed at the right moment” vs “pressed early”.
    */
-  consumeHitAction(): HitAction | null
+  consumeHitAction(): HitInputEvent | null
+
+  /**
+   * Optional cleanup hook for controllers that own external resources
+   * (camera streams, model instances, DOM overlays, etc.).
+   */
+  destroy?(): void
 }
 

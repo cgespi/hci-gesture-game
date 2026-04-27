@@ -3,8 +3,14 @@ import {
   BALL_COLOR,
   BALL_RADIUS,
   BALL_HIT_WINDOW_COLOR,
+  BALL_MISS_FALL_DURATION_MS,
+  BALL_MISS_FALL_END_Y,
+  BALL_MISS_FALL_END_SCALE_MULTIPLIER,
   BALL_MAX_SCALE,
   BALL_MIN_SCALE,
+  BALL_RETURN_DURATION_MS,
+  BALL_RETURN_END_SCALE,
+  BALL_RETURN_TARGET_Y,
   CANNON_COLOR,
   CANNON_HEIGHT,
   CANNON_WIDTH,
@@ -37,11 +43,15 @@ import {
   SHOT_DURATION_MS,
   SKY_COLOR,
   STARTING_LIVES,
+  WEBCAM_EARLY_BUFFER_MS,
+  WEBCAM_LATE_GRACE_MS,
 } from '../constants.ts'
 import { GameState, type GameState as GameStateType } from '../gameplay/GameState'
 import { PerspectiveShot } from '../gameplay/PerspectiveShot'
-import type { InputController } from '../input/InputController'
+import type { HitAction, HitInputEvent, InputController } from '../input/InputController'
+import { CombinedInputController } from '../input/CombinedInputController'
 import { KeyboardInputController } from '../input/KeyboardInputController'
+import { MediaPipeHandInput } from '../input/MediaPipeHandInput'
 
 /**
  * Lane-based “cannon reaction” prototype.
@@ -66,6 +76,18 @@ export class GameScene extends Phaser.Scene {
   private currentShot: PerspectiveShot | null = null
   private currentShotInHitWindow = false
   private shotResolved = false
+  private outcomeStartX = 0
+  private outcomeStartY = 0
+  private outcomeStartScale = 1
+  private outcomeStartDepth = 0
+  private missFallTargetX = 0
+  private previousShotX: number | null = null
+  private previousShotY: number | null = null
+  private shotMotionX = 0
+  private shotMotionY = 1
+  private bufferedWebcamAction: HitAction | null = null
+  private bufferedWebcamAtMs = Number.NEGATIVE_INFINITY
+  private lastHitZoneSeenAtMs = Number.NEGATIVE_INFINITY
 
   private roundOverText!: Phaser.GameObjects.Text
   private keySpace!: Phaser.Input.Keyboard.Key
@@ -81,9 +103,15 @@ export class GameScene extends Phaser.Scene {
     this.registry.set(RegistryKey.Lives, STARTING_LIVES)
     this.registry.set(RegistryKey.TargetLane, '—')
 
-    this.inputController = new KeyboardInputController(this)
+    const keyboardInput = new KeyboardInputController(this)
+    const webcamInput = new MediaPipeHandInput()
+    this.inputController = new CombinedInputController(keyboardInput, webcamInput)
     this.keySpace = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
     this.keyEnter = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.inputController.destroy?.()
+    })
 
     this.cameras.main.setBackgroundColor(SKY_COLOR)
 
@@ -145,8 +173,8 @@ export class GameScene extends Phaser.Scene {
 
     this.inputController.update(dtMs / 1000)
 
-    const action = this.inputController.consumeHitAction()
-    if (action) this.tryResolveShotFromInput(action)
+    const event = this.inputController.consumeHitAction()
+    if (event) this.handleInputEvent(event)
 
     switch (this.state) {
       case GameState.PreparingShot: {
@@ -165,9 +193,21 @@ export class GameScene extends Phaser.Scene {
           // If the shot reached the player without input resolution, it’s a late miss.
           if (s.done && !this.shotResolved) {
             this.onMissedShot()
-            this.enterState(GameState.ResolvingShot)
+            this.beginOutcomeAnimationFromSnapshot(s)
+            this.prepareMissFallTarget()
+            this.enterState(GameState.MissFall)
           }
         }
+        break
+      }
+
+      case GameState.HitReturn: {
+        this.updateHitReturn()
+        break
+      }
+
+      case GameState.MissFall: {
+        this.updateMissFall()
         break
       }
 
@@ -193,13 +233,16 @@ export class GameScene extends Phaser.Scene {
         break
       }
     }
+
+    const nowMs = performance.now()
+    this.tryConsumeBufferedWebcamHit(nowMs)
   }
 
   private enterState(next: GameStateType): void {
     this.state = next
     this.stateTimeMs = 0
 
-    if (next !== GameState.BallInFlight) {
+    if (next !== GameState.BallInFlight && next !== GameState.HitReturn && next !== GameState.MissFall) {
       // Reset transient shot visuals when leaving flight.
       this.currentShotInHitWindow = false
       this.hitZoneRect.setFillStyle(HIT_ZONE_COLOR, HIT_ZONE_FILL_ALPHA)
@@ -220,6 +263,13 @@ export class GameScene extends Phaser.Scene {
     this.shotResolved = false
     this.currentShotInHitWindow = false
     this.currentShot = null
+    this.previousShotX = null
+    this.previousShotY = null
+    this.shotMotionX = 0
+    this.shotMotionY = 1
+    this.bufferedWebcamAction = null
+    this.bufferedWebcamAtMs = Number.NEGATIVE_INFINITY
+    this.lastHitZoneSeenAtMs = Number.NEGATIVE_INFINITY
 
     const lanes: Lane[] = ['left', 'center', 'right']
     this.targetLane = Phaser.Utils.Array.GetRandom(lanes)
@@ -253,25 +303,65 @@ export class GameScene extends Phaser.Scene {
     this.applyShotSnapshot(this.currentShot.getSnapshot())
   }
 
-  private tryResolveShotFromInput(action: 'left' | 'center' | 'right'): void {
+  private attemptHit(action: HitAction): void {
+    this.tryResolveShotFromInput(action)
+  }
+
+  private handleInputEvent(event: HitInputEvent): void {
+    if (event.source === 'keyboard') {
+      this.attemptHit(event.action)
+      return
+    }
+
+    // Webcam input is buffered so early detections can still resolve when the ball
+    // enters the hit window shortly after camera/model latency.
+    this.bufferedWebcamAction = event.action
+    this.bufferedWebcamAtMs = event.timestampMs
+  }
+
+  private tryConsumeBufferedWebcamHit(nowMs: number): void {
+    if (!this.bufferedWebcamAction) return
+    if (this.state !== GameState.BallInFlight || this.shotResolved || !this.currentShot) {
+      return
+    }
+
+    const ageMs = nowMs - this.bufferedWebcamAtMs
+    if (ageMs > WEBCAM_EARLY_BUFFER_MS) {
+      this.bufferedWebcamAction = null
+      return
+    }
+
+    const snapshot = this.currentShot.getSnapshot()
+    const inZone = this.isBallCenterInsideHitZone(snapshot.x, snapshot.y)
+    const inLateGrace = nowMs - this.lastHitZoneSeenAtMs <= WEBCAM_LATE_GRACE_MS
+    if (!inZone && !inLateGrace) {
+      return
+    }
+
+    const action = this.bufferedWebcamAction
+    this.bufferedWebcamAction = null
+    this.attemptHit(action)
+  }
+
+  private tryResolveShotFromInput(action: HitAction): void {
     if (this.state !== GameState.BallInFlight) return
     if (this.shotResolved) return
     if (!this.currentShot) return
 
-    const timingOk = this.currentShot.getSnapshot().inHitWindow
+    const snapshot = this.currentShot.getSnapshot()
+    const centerInsideHitZone = this.isBallCenterInsideHitZone(snapshot.x, snapshot.y)
+    const laneMatches = this.doesInputMatchTargetLane(action)
 
-    const laneMatches =
-      this.targetLane === 'center'
-        ? action === 'left' || action === 'right' || action === 'center'
-        : action === this.targetLane
-
-    if (timingOk && laneMatches) {
+    if (centerInsideHitZone && laneMatches) {
       this.onSuccessfulHit()
+      this.beginOutcomeAnimationFromSnapshot(snapshot)
+      this.enterState(GameState.HitReturn)
     } else {
       this.onMissedShot()
+      this.beginOutcomeAnimationFromSnapshot(snapshot)
+      this.prepareMissFallTarget()
+      this.enterState(GameState.MissFall)
     }
-
-    this.enterState(GameState.ResolvingShot)
   }
 
   private applyShotSnapshot(s: {
@@ -279,20 +369,20 @@ export class GameScene extends Phaser.Scene {
     y: number
     scale: number
     depth: number
-    inHitWindow: boolean
   }): void {
-    this.ball.setPosition(s.x, s.y)
-    this.ball.setScale(s.scale)
+    if (this.previousShotX !== null && this.previousShotY !== null) {
+      this.shotMotionX = s.x - this.previousShotX
+      this.shotMotionY = s.y - this.previousShotY
+    }
+    this.previousShotX = s.x
+    this.previousShotY = s.y
 
-    // Shadow: grows + darkens slightly as the ball approaches.
-    const shadowY = s.y + Phaser.Math.Linear(SHADOW_Y_OFFSET_MIN, SHADOW_Y_OFFSET_MAX, s.depth)
-    const shadowAlpha = Phaser.Math.Linear(SHADOW_MIN_ALPHA, SHADOW_MAX_ALPHA, s.depth)
-    this.shadow.setPosition(s.x, shadowY)
-    this.shadow.setScale(s.scale)
-    this.shadow.setAlpha(shadowAlpha)
+    this.setBallAndShadow(s.x, s.y, s.scale, s.depth)
 
-    // Simple hit-window cue.
-    if (s.inHitWindow) {
+    // Flash the same exact zone used by hit validation.
+    const centerInsideHitZone = this.isBallCenterInsideHitZone(s.x, s.y)
+    if (centerInsideHitZone) {
+      this.lastHitZoneSeenAtMs = performance.now()
       this.ball.setFillStyle(BALL_HIT_WINDOW_COLOR)
       if (!this.currentShotInHitWindow) {
         this.currentShotInHitWindow = true
@@ -305,6 +395,74 @@ export class GameScene extends Phaser.Scene {
         this.hitZoneRect.setFillStyle(HIT_ZONE_COLOR, HIT_ZONE_FILL_ALPHA)
       }
     }
+  }
+
+  private isBallCenterInsideHitZone(ballX: number, ballY: number): boolean {
+    const left = this.hitZoneRect.x - HIT_ZONE_WIDTH / 2
+    const right = this.hitZoneRect.x + HIT_ZONE_WIDTH / 2
+    const top = HIT_ZONE_Y
+    const bottom = HIT_ZONE_Y + HIT_ZONE_HEIGHT
+    return ballX >= left && ballX <= right && ballY >= top && ballY <= bottom
+  }
+
+  private doesInputMatchTargetLane(action: HitAction): boolean {
+    // Keep center lane permissive for now so MediaPipe center gesture can be swapped in later.
+    if (this.targetLane === 'center') {
+      return action === 'left' || action === 'right' || action === 'center'
+    }
+    return action === this.targetLane
+  }
+
+  private beginOutcomeAnimationFromSnapshot(s: { x: number; y: number; scale: number; depth: number }): void {
+    this.outcomeStartX = s.x
+    this.outcomeStartY = s.y
+    this.outcomeStartScale = s.scale
+    this.outcomeStartDepth = s.depth
+  }
+
+  private prepareMissFallTarget(): void {
+    const remainingY = Math.max(1, BALL_MISS_FALL_END_Y - this.outcomeStartY)
+    const downwardMotionY = this.shotMotionY > 0.001 ? this.shotMotionY : 1
+    const slopeXPerY = this.shotMotionX / downwardMotionY
+    const projectedX = this.outcomeStartX + slopeXPerY * remainingY
+    this.missFallTargetX = Phaser.Math.Clamp(projectedX, -GAME_WIDTH * 0.35, GAME_WIDTH * 1.35)
+  }
+
+  private updateHitReturn(): void {
+    const t = Phaser.Math.Clamp(this.stateTimeMs / BALL_RETURN_DURATION_MS, 0, 1)
+    const x = Phaser.Math.Linear(this.outcomeStartX, GAME_WIDTH / 2, t)
+    const y = Phaser.Math.Linear(this.outcomeStartY, BALL_RETURN_TARGET_Y, t)
+    const scale = Phaser.Math.Linear(this.outcomeStartScale, BALL_RETURN_END_SCALE, t)
+    const depth = Phaser.Math.Linear(this.outcomeStartDepth, 0, t)
+    this.setBallAndShadow(x, y, scale, depth)
+    this.ball.setFillStyle(BALL_COLOR)
+    if (t >= 1) {
+      this.enterState(GameState.ResolvingShot)
+    }
+  }
+
+  private updateMissFall(): void {
+    const t = Phaser.Math.Clamp(this.stateTimeMs / BALL_MISS_FALL_DURATION_MS, 0, 1)
+    const x = Phaser.Math.Linear(this.outcomeStartX, this.missFallTargetX, t)
+    const y = Phaser.Math.Linear(this.outcomeStartY, BALL_MISS_FALL_END_Y, t)
+    const scale = Phaser.Math.Linear(this.outcomeStartScale, this.outcomeStartScale * BALL_MISS_FALL_END_SCALE_MULTIPLIER, t)
+    const depth = Phaser.Math.Linear(this.outcomeStartDepth, 1, t)
+    this.setBallAndShadow(x, y, scale, depth)
+    this.ball.setFillStyle(BALL_COLOR)
+    if (t >= 1) {
+      this.enterState(GameState.ResolvingShot)
+    }
+  }
+
+  private setBallAndShadow(x: number, y: number, scale: number, depth: number): void {
+    this.ball.setPosition(x, y)
+    this.ball.setScale(scale)
+
+    const shadowY = y + Phaser.Math.Linear(SHADOW_Y_OFFSET_MIN, SHADOW_Y_OFFSET_MAX, depth)
+    const shadowAlpha = Phaser.Math.Linear(SHADOW_MIN_ALPHA, SHADOW_MAX_ALPHA, depth)
+    this.shadow.setPosition(x, shadowY)
+    this.shadow.setScale(scale)
+    this.shadow.setAlpha(shadowAlpha)
   }
 
   private onSuccessfulHit(): void {

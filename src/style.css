@@ -12,3 +12,42 @@ body,
 canvas {
   display: block;
 }
+
+.mp-webcam-overlay {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 180px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+  pointer-events: none;
+}
+
+.mp-webcam-overlay.is-hidden {
+  display: none;
+}
+
+.mp-webcam-video {
+  width: 100%;
+  border-radius: 6px;
+  background: #111111;
+}
+
+.mp-webcam-video.is-mirrored {
+  transform: scaleX(-1);
+}
+
+.mp-webcam-lane {
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-align: center;
+}

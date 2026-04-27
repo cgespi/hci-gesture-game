@@ -33,11 +33,11 @@ export const CANNON_HEIGHT = 24
 export const DEBUG_SHOW_HIT_ZONE = true
 export const HIT_ZONE_FILL_ALPHA = 0.22
 export const HIT_ZONE_STROKE_ALPHA = 0.85
-export const HIT_ZONE_WIDTH = 210
-export const HIT_ZONE_HEIGHT = 130
+export const HIT_ZONE_WIDTH = 168
+export const HIT_ZONE_HEIGHT = 104
 export const HIT_ZONE_COLOR = 0x00ff66
 /** Y position (top-left) of the lane hit zone rectangle. */
-export const HIT_ZONE_Y = Math.round(GAME_HEIGHT * 0.64)
+export const HIT_ZONE_Y = GAME_HEIGHT - HIT_ZONE_HEIGHT
 
 export type Lane = 'left' | 'center' | 'right'
 
@@ -53,7 +53,15 @@ export function laneX(lane: Lane): number {
 
 /** Ball starts small at the cannon, grows as it approaches the player. */
 export const BALL_MIN_SCALE = 0.24
-export const BALL_MAX_SCALE = 1.55
+export const BALL_MAX_SCALE = 1.86
+/** Hit confirmation animation: straight return toward sky-box center. */
+export const BALL_RETURN_DURATION_MS = 380
+export const BALL_RETURN_TARGET_Y = Math.round(GAME_HEIGHT * 0.22)
+export const BALL_RETURN_END_SCALE = BALL_MIN_SCALE
+/** Miss animation: continue past screen bottom before resolving. */
+export const BALL_MISS_FALL_DURATION_MS = 340
+export const BALL_MISS_FALL_END_Y = GAME_HEIGHT + BALL_RADIUS * 4
+export const BALL_MISS_FALL_END_SCALE_MULTIPLIER = 1.18
 
 /**
  * Depth window during which a hit is considered “on time”.
@@ -104,6 +112,39 @@ export const SHADOW_WIDTH_RADIUS = BALL_RADIUS * 1.25
 export const SHADOW_HEIGHT_RADIUS = BALL_RADIUS * 0.45
 export const SHADOW_Y_OFFSET_MIN = 8
 export const SHADOW_Y_OFFSET_MAX = 18
+
+// --- MediaPipe hand tracking tuning ---
+
+/**
+ * If true, webcam x input is flipped (`x = 1 - x`) so lane mapping matches a mirrored preview.
+ * Keep this aligned with your preview mirroring for natural player movement.
+ */
+export const MIRROR_WEBCAM_INPUT = true
+
+/** Toggle small webcam/lane debug overlay visibility. */
+export const SHOW_WEBCAM_DEBUG_OVERLAY = true
+
+/** Minimum time between webcam-triggered hits so one held pose does not spam hits. */
+export const WEBCAM_HIT_COOLDOWN_MS = 400
+/** Buffer webcam intents before the hit zone to absorb camera/inference latency. */
+export const WEBCAM_EARLY_BUFFER_MS = 250
+/** Accept webcam hit attempts shortly after the ball leaves the zone. */
+export const WEBCAM_LATE_GRACE_MS = 80
+
+/** Lane thresholds in normalized webcam coordinates (0..1). */
+export const HAND_LANE_LEFT_MAX_X = 0.4
+export const HAND_LANE_RIGHT_MIN_X = 0.6
+
+/**
+ * Use a local model in `public/mediapipe/hand_landmarker.task` when true.
+ * Keep false to use the hosted official model URL.
+ */
+export const USE_LOCAL_HAND_LANDMARKER_MODEL = false
+export const LOCAL_HAND_LANDMARKER_MODEL_PATH = 'mediapipe/hand_landmarker.task'
+export const DEFAULT_HAND_LANDMARKER_MODEL_URL =
+  'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
+export const MEDIAPIPE_VISION_WASM_ROOT_URL =
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm'
 
 /** Scene keys passed to `super({ key })` and `this.scene.start(...)`. */
 export const SceneKey = {
