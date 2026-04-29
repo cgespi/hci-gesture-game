@@ -1,4 +1,5 @@
 export const GameState = {
+  Initializing: 'Initializing',
   PreparingShot: 'PreparingShot',
   BallInFlight: 'BallInFlight',
   HitReturn: 'HitReturn',

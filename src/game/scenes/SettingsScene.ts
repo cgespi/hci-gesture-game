@@ -13,7 +13,6 @@ export class SettingsScene extends Phaser.Scene {
             this.registry.set(RegistryKey.StreakThreshhold, 8) //higher value means slower difficulty growth, 8 = easy, 4 = medium, 2 = hard
             this.registry.set(RegistryKey.GrowthSpeed, 0.1) //higher value means higher difficulty growth
         }
-    
         this.add
             .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 200, 'Settings', {
                 fontSize: '36px',
@@ -125,7 +124,7 @@ export class SettingsScene extends Phaser.Scene {
             widget.x = sliderValue;
 
             this.registry.set(RegistryKey.GrowthSpeed, (sliderValue - 300) / 200);
-        });     
+        });
 
         this.add
             .text(GAME_WIDTH/2, GAME_HEIGHT/2+200, 'Confirm',{
@@ -134,6 +133,12 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                if (this.scene.isPaused(SceneKey.Game)) {
+                    this.scene.stop(SceneKey.UI)
+                    this.scene.stop(SceneKey.Game)
+                    this.scene.start(SceneKey.Game)
+                    return
+                }
                 this.scene.start(SceneKey.Confirm)
             })
             .setOrigin(0.5)

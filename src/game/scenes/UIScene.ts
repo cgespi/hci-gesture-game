@@ -95,4 +95,5 @@ export class UIScene extends Phaser.Scene {
       this.livesText.setText(`Lives: ${value}`)
     }
   }
+
 }

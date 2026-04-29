@@ -18,6 +18,10 @@ export class CombinedInputController implements InputController {
     this.webcamInput.update(dtSeconds)
   }
 
+  isReady(): boolean {
+    return this.keyboardInput.isReady() && this.webcamInput.isReady()
+  }
+
   consumeHitAction(): HitInputEvent | null {
     const keyboardAction = this.keyboardInput.consumeHitAction()
     if (keyboardAction) return keyboardAction

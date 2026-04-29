@@ -32,6 +32,10 @@ export class KeyboardInputController implements InputController {
     if (Phaser.Input.Keyboard.JustDown(this.keyD)) this.hitThisFrame = 'right'
   }
 
+  isReady(): boolean {
+    return true
+  }
+
   consumeHitAction(): HitInputEvent | null {
     if (!this.hitThisFrame) return null
     return {

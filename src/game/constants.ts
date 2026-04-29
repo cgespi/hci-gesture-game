@@ -125,11 +125,17 @@ export const MIRROR_WEBCAM_INPUT = true
 export const SHOW_WEBCAM_DEBUG_OVERLAY = true
 
 /** Minimum time between webcam-triggered hits so one held pose does not spam hits. */
-export const WEBCAM_HIT_COOLDOWN_MS = 400
+export const WEBCAM_HIT_COOLDOWN_MS = 220
 /** Buffer webcam intents before the hit zone to absorb camera/inference latency. */
-export const WEBCAM_EARLY_BUFFER_MS = 250
+export const WEBCAM_EARLY_BUFFER_MS = 450
 /** Accept webcam hit attempts shortly after the ball leaves the zone. */
-export const WEBCAM_LATE_GRACE_MS = 80
+export const WEBCAM_LATE_GRACE_MS = 130
+/** Sliding window used for swipe displacement/velocity checks. */
+export const WEBCAM_SWIPE_WINDOW_MS = 260
+/** Minimum normalized hand movement distance required to treat movement as a swipe. */
+export const WEBCAM_SWIPE_MIN_DELTA_X = 0.018
+/** Tiny movement threshold to suppress landmark jitter noise. */
+export const WEBCAM_SWIPE_JITTER_DEADZONE_X = 0.003
 
 /** Lane thresholds in normalized webcam coordinates (0..1). */
 export const HAND_LANE_LEFT_MAX_X = 0.4

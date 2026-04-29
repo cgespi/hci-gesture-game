@@ -62,7 +62,7 @@ import { MediaPipeHandInput } from '../input/MediaPipeHandInput'
 export class GameScene extends Phaser.Scene {
   private inputController!: InputController
 
-  private state: GameStateType = GameState.PreparingShot
+  private state: GameStateType = GameState.Initializing
   private stateTimeMs = 0
 
   private ball!: Phaser.GameObjects.Arc
@@ -90,8 +90,11 @@ export class GameScene extends Phaser.Scene {
   private lastHitZoneSeenAtMs = Number.NEGATIVE_INFINITY
 
   private roundOverText!: Phaser.GameObjects.Text
+  private initializingBackdrop!: Phaser.GameObjects.Rectangle
+  private initializingText!: Phaser.GameObjects.Text
   private keySpace!: Phaser.Input.Keyboard.Key
   private keyEnter!: Phaser.Input.Keyboard.Key
+  private keyEsc!: Phaser.Input.Keyboard.Key
 
   constructor() {
     super({ key: SceneKey.Game })
@@ -108,6 +111,7 @@ export class GameScene extends Phaser.Scene {
     this.inputController = new CombinedInputController(keyboardInput, webcamInput)
     this.keySpace = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
     this.keyEnter = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
+    this.keyEsc = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.inputController.destroy?.()
@@ -161,13 +165,37 @@ export class GameScene extends Phaser.Scene {
       .setDepth(1100)
       .setVisible(false)
 
+    this.initializingBackdrop = this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.5)
+      .setOrigin(0, 0)
+      .setDepth(1080)
+      .setVisible(false)
+
+    this.initializingText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Initializing...', {
+        fontSize: '34px',
+        color: '#ffffff',
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setDepth(1100)
+      .setVisible(false)
+
     this.scene.launch(SceneKey.UI)
     this.scene.bringToTop(SceneKey.UI)
 
-    this.enterState(GameState.PreparingShot)
+    this.enterState(GameState.Initializing)
   }
 
   update(_time: number, deltaMs: number): void {
+    if (Phaser.Input.Keyboard.JustDown(this.keyEsc) && !this.scene.isActive(SceneKey.Settings)) {
+      this.scene.pause(SceneKey.UI)
+      this.scene.launch(SceneKey.Settings)
+      this.scene.bringToTop(SceneKey.Settings)
+      this.scene.pause()
+      return
+    }
+
     const dtMs = Math.min(deltaMs, 50)
     this.stateTimeMs += dtMs
 
@@ -177,6 +205,13 @@ export class GameScene extends Phaser.Scene {
     if (event) this.handleInputEvent(event)
 
     switch (this.state) {
+      case GameState.Initializing: {
+        if (this.inputController.isReady()) {
+          this.enterState(GameState.PreparingShot)
+        }
+        break
+      }
+
       case GameState.PreparingShot: {
         if (this.stateTimeMs >= RESET_DELAY_MS) {
           this.fireShot()
@@ -227,8 +262,9 @@ export class GameScene extends Phaser.Scene {
         if (Phaser.Input.Keyboard.JustDown(this.keySpace)) {
           this.scene.stop(SceneKey.UI)
           this.scene.start(SceneKey.Settings)
-        } else if (Phaser.Input.Keyboard.JustDown(this.keyEnter)){
-          //restart the game with current settings
+        } else if (Phaser.Input.Keyboard.JustDown(this.keyEnter)) {
+          this.scene.stop(SceneKey.UI)
+          this.scene.restart()
         }
         break
       }
@@ -257,6 +293,10 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.roundOverText.setVisible(false)
     }
+
+    const showInitializingOverlay = next === GameState.Initializing
+    this.initializingBackdrop.setVisible(showInitializingOverlay)
+    this.initializingText.setVisible(showInitializingOverlay)
   }
 
   private fireShot(): void {
@@ -303,8 +343,8 @@ export class GameScene extends Phaser.Scene {
     this.applyShotSnapshot(this.currentShot.getSnapshot())
   }
 
-  private attemptHit(action: HitAction): void {
-    this.tryResolveShotFromInput(action)
+  private attemptHit(action: HitAction, allowLateGraceWindow = false): void {
+    this.tryResolveShotFromInput(action, allowLateGraceWindow)
   }
 
   private handleInputEvent(event: HitInputEvent): void {
@@ -332,7 +372,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const snapshot = this.currentShot.getSnapshot()
-    const inZone = this.isBallCenterInsideHitZone(snapshot.x, snapshot.y)
+    const inZone = this.isBallOverlappingHitZone(snapshot.x, snapshot.y, snapshot.scale)
     const inLateGrace = nowMs - this.lastHitZoneSeenAtMs <= WEBCAM_LATE_GRACE_MS
     if (!inZone && !inLateGrace) {
       return
@@ -340,19 +380,20 @@ export class GameScene extends Phaser.Scene {
 
     const action = this.bufferedWebcamAction
     this.bufferedWebcamAction = null
-    this.attemptHit(action)
+    this.attemptHit(action, inLateGrace)
   }
 
-  private tryResolveShotFromInput(action: HitAction): void {
+  private tryResolveShotFromInput(action: HitAction, allowLateGraceWindow = false): void {
     if (this.state !== GameState.BallInFlight) return
     if (this.shotResolved) return
     if (!this.currentShot) return
 
     const snapshot = this.currentShot.getSnapshot()
-    const centerInsideHitZone = this.isBallCenterInsideHitZone(snapshot.x, snapshot.y)
+    const inHitWindow = this.isBallOverlappingHitZone(snapshot.x, snapshot.y, snapshot.scale)
     const laneMatches = this.doesInputMatchTargetLane(action)
+    const timingWindowMatches = inHitWindow || allowLateGraceWindow
 
-    if (centerInsideHitZone && laneMatches) {
+    if (timingWindowMatches && laneMatches) {
       this.onSuccessfulHit()
       this.beginOutcomeAnimationFromSnapshot(snapshot)
       this.enterState(GameState.HitReturn)
@@ -380,8 +421,8 @@ export class GameScene extends Phaser.Scene {
     this.setBallAndShadow(s.x, s.y, s.scale, s.depth)
 
     // Flash the same exact zone used by hit validation.
-    const centerInsideHitZone = this.isBallCenterInsideHitZone(s.x, s.y)
-    if (centerInsideHitZone) {
+    const inHitWindow = this.isBallOverlappingHitZone(s.x, s.y, s.scale)
+    if (inHitWindow) {
       this.lastHitZoneSeenAtMs = performance.now()
       this.ball.setFillStyle(BALL_HIT_WINDOW_COLOR)
       if (!this.currentShotInHitWindow) {
@@ -397,12 +438,17 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private isBallCenterInsideHitZone(ballX: number, ballY: number): boolean {
+  private isBallOverlappingHitZone(ballX: number, ballY: number, ballScale: number): boolean {
     const left = this.hitZoneRect.x - HIT_ZONE_WIDTH / 2
     const right = this.hitZoneRect.x + HIT_ZONE_WIDTH / 2
     const top = HIT_ZONE_Y
     const bottom = HIT_ZONE_Y + HIT_ZONE_HEIGHT
-    return ballX >= left && ballX <= right && ballY >= top && ballY <= bottom
+    const radius = BALL_RADIUS * Math.max(ballScale, 0)
+    const closestX = Phaser.Math.Clamp(ballX, left, right)
+    const closestY = Phaser.Math.Clamp(ballY, top, bottom)
+    const dx = ballX - closestX
+    const dy = ballY - closestY
+    return dx * dx + dy * dy <= radius * radius
   }
 
   private doesInputMatchTargetLane(action: HitAction): boolean {

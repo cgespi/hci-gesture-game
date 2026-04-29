@@ -20,6 +20,12 @@ export interface InputController {
   update(dtSeconds: number): void
 
   /**
+   * Returns true when the input source is ready for gameplay.
+   * For always-available inputs (for example keyboard), this should return true.
+   */
+  isReady(): boolean
+
+  /**
    * Returns a hit action triggered during the *current frame* (since the last `update()` call).
    *
    * Important: this should NOT “queue up” inputs across time, because gameplay needs to
