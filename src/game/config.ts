@@ -6,6 +6,7 @@ import { MenuScene } from './scenes/MenuScene.ts'
 import { UIScene } from './scenes/UIScene.ts'
 import { ConfirmScene } from './scenes/ConfirmScene.ts'
 import { SettingsScene } from './scenes/SettingsScene.ts'
+import { PauseScene } from './scenes/PauseScene.ts'
 
 
 /**
@@ -29,6 +30,6 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [BootScene, MenuScene, GameScene, UIScene, ConfirmScene, SettingsScene],
+    scene: [BootScene, MenuScene, GameScene, UIScene, ConfirmScene, SettingsScene, PauseScene],
   }
 }
