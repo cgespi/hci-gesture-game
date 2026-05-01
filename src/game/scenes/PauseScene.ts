@@ -15,25 +15,33 @@ export class PauseScene extends Phaser.Scene {
             .setOrigin(0.5)
 
           this.add
-            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, 'Current Difficulty Settings', {
-                fontSize: '20px',
+            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 120, 'Current Difficulty Settings', {
+                fontSize: '25px',
                 color: '#000000',
             })
             .setOrigin(0.5)
 
         this.add
-            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40 , this.registry.get('difficulty') + ' difficulty', {
+            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80 , this.registry.get('difficulty') + ' difficulty', {
                 fontSize: '20px',
                 color: '#000000',
             })
             .setOrigin(0.5)
 
         this.add 
-            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2  , this.registry.get('growthSpeed')*100 + '% difficulty increase per hitstreak cycle' , {
+            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 -40 , this.registry.get('growthSpeed')*100 + '% difficulty increase per hitstreak cycle' , {
                 fontSize: '15px',
                 color: '#000000',
             })
             .setOrigin(0.5)
+
+
+        this.add
+          .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 , 'Endless Mode: ' + this.registry.get('endlessMode'), {
+              fontSize: '20px',
+              color: '#000000',
+          })
+          .setOrigin(0.5)
 
 
         this.add
