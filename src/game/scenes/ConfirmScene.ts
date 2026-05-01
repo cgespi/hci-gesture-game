@@ -14,6 +14,7 @@ export class ConfirmScene extends Phaser.Scene {
             this.registry.set(RegistryKey.LaunchDelay, 2.0) //seconds, 2 = easy, 1 = medium, 0.5 = hard
             this.registry.set(RegistryKey.StreakThreshhold, 8) //higher value means slower difficulty growth, 8 = easy, 4 = medium, 2 = hard
             this.registry.set(RegistryKey.GrowthSpeed, 0.1) //higher value means higher difficulty growth
+            this.registry.set(RegistryKey.EndlessMode, false) //higher value means higher difficulty growth
         }
 
          this.add
@@ -37,9 +38,16 @@ export class ConfirmScene extends Phaser.Scene {
             })
             .setOrigin(0.5)
 
+        this.add
+            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50 , 'Endless Mode: ' + this.registry.get('endlessMode'), {
+                fontSize: '20px',
+                color: '#a0a0a0',
+            })
+            .setOrigin(0.5)
+
 
         this.add
-            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 40, 'Edit Settings', {
+            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 150, 'Edit Settings', {
                 fontSize: '20px',
                 color: '#eeeeff',
             })
@@ -50,7 +58,7 @@ export class ConfirmScene extends Phaser.Scene {
             .setOrigin(0.5)
 
         this.add
-            .text(GAME_WIDTH/2, GAME_HEIGHT/2 + 80, 'Start',{
+            .text(GAME_WIDTH/2, GAME_HEIGHT/2 + 200, 'Start',{
                 fontSize: '20px',
                 color: '#eeeeff',
             })
