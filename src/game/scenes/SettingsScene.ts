@@ -12,6 +12,7 @@ export class SettingsScene extends Phaser.Scene {
             this.registry.set(RegistryKey.LaunchDelay, 2.0) //seconds, 2 = easy, 1 = medium, 0.5 = hard
             this.registry.set(RegistryKey.StreakThreshhold, 8) //higher value means slower difficulty growth, 8 = easy, 4 = medium, 2 = hard
             this.registry.set(RegistryKey.GrowthSpeed, 0.1) //higher value means higher difficulty growth
+            this.registry.set(RegistryKey.EndlessMode, false)
         }
         this.add
             .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 200, 'Settings', {
@@ -126,6 +127,30 @@ export class SettingsScene extends Phaser.Scene {
             this.registry.set(RegistryKey.GrowthSpeed, (sliderValue - 300) / 200);
         });
 
+        const endlessButton = this.add
+            .text(GAME_WIDTH/2, GAME_HEIGHT/2+100, 'Endless Mode',{
+                fontSize: '20px',
+                color: '#ff0000',
+            })
+            .setInteractive({useHandCursor: true})
+            .on('pointerdown',() => {
+                if (this.registry.get('endlessMode')){
+                    this.registry.set(RegistryKey.EndlessMode, false)
+                    endlessButton.setColor('#ff0000')
+
+                } else {
+                    this.registry.set(RegistryKey.EndlessMode, true)
+                    endlessButton.setColor('#00ff59')
+                }
+            })
+            .setOrigin(0.5)
+        
+        if (this.registry.get('endlessMode')){
+                endlessButton.setColor('#00ff59')
+            } else {
+                endlessButton.setColor('#ff0000')
+            }
+
         this.add
             .text(GAME_WIDTH/2, GAME_HEIGHT/2+200, 'Confirm',{
                 fontSize: '20px',
@@ -144,3 +169,4 @@ export class SettingsScene extends Phaser.Scene {
             .setOrigin(0.5)
   }
 }
+
