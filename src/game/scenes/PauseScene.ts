@@ -7,15 +7,6 @@ export class PauseScene extends Phaser.Scene {
   }
   //literally just confirm scene but with some extra buttons
   create() {
-        //auto set easy difficulty if no difficulty set
-        if (!this.registry.has('difficulty')){
-            this.registry.set(RegistryKey.Difficulty, 'Easy')
-            this.registry.set(RegistryKey.BallSpeed, 1) //arbitrary values for now. 1 = easy, 2 = medium, 3 = hard
-            this.registry.set(RegistryKey.LaunchDelay, 2.0) //seconds, 2 = easy, 1 = medium, 0.5 = hard
-            this.registry.set(RegistryKey.StreakThreshhold, 8) //higher value means slower difficulty growth, 8 = easy, 4 = medium, 2 = hard
-            this.registry.set(RegistryKey.GrowthSpeed, 0.1) //higher value means higher difficulty growth
-        }
-
          this.add
             .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 200, 'Pause', {
                 fontSize: '36px',
