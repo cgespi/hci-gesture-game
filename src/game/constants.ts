@@ -178,4 +178,5 @@ export const RegistryKey = {
   StreakThreshhold: 'streakThreshhold',
   Difficulty: 'difficulty',
   GrowthSpeed: 'growthSpeed',
+  EndlessMode: 'endlessMode',
 } as const
