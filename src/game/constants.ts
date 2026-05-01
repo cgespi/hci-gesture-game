@@ -160,6 +160,7 @@ export const SceneKey = {
   UI: 'UI',
   Confirm: 'Confirm',
   Settings: 'Settings',
+  Pause: 'Pause',
 } as const
 
 /** Registry keys for values shared between scenes (e.g. Game writes, UI reads). */
