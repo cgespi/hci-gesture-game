@@ -188,10 +188,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
-    if (Phaser.Input.Keyboard.JustDown(this.keyEsc) && !this.scene.isActive(SceneKey.Settings)) {
+    if (Phaser.Input.Keyboard.JustDown(this.keyEsc) && !this.scene.isActive(SceneKey.Pause)) {
       this.scene.pause(SceneKey.UI)
-      this.scene.launch(SceneKey.Settings)
-      this.scene.bringToTop(SceneKey.Settings)
+      this.scene.launch(SceneKey.Pause)
+      this.scene.bringToTop(SceneKey.Pause)
       this.scene.pause()
       return
     }
