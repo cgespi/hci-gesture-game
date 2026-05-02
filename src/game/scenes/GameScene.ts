@@ -154,6 +154,10 @@ export class GameScene extends Phaser.Scene {
       this.hitZoneRect.setVisible(false)
       this.hitZoneLabel.setVisible(false)
     }
+    if (this.registry.get('difficulty') != 'Easy'){
+      this.hitZoneRect.setVisible(false)
+      this.hitZoneLabel.setVisible(false)
+    }
 
     this.roundOverText = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
@@ -188,7 +192,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
-    if (Phaser.Input.Keyboard.JustDown(this.keyEsc) && !this.scene.isActive(SceneKey.Pause)) {
+    if (Phaser.Input.Keyboard.JustDown(this.keyEsc) && !this.scene.isActive(SceneKey.Pause) && this.state != GameState.RoundOver) {
       this.scene.pause(SceneKey.UI)
       this.scene.launch(SceneKey.Pause)
       this.scene.bringToTop(SceneKey.Pause)
