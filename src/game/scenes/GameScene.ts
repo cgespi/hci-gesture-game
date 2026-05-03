@@ -31,7 +31,6 @@ import {
   laneX,
   type Lane,
   RegistryKey,
-  RESET_DELAY_MS,
   SceneKey,
   SHADOW_COLOR,
   SHADOW_HEIGHT_RADIUS,
@@ -47,6 +46,7 @@ import {
   WEBCAM_LATE_GRACE_MS,
 } from '../constants.ts'
 import { GameState, type GameState as GameStateType } from '../gameplay/GameState'
+import { DifficultyManager, type DifficultyConfig, type DifficultyLevel } from '../gameplay/DifficultyManager'
 import { PerspectiveShot } from '../gameplay/PerspectiveShot'
 import type { HitAction, HitInputEvent, InputController } from '../input/InputController'
 import { CombinedInputController } from '../input/CombinedInputController'
@@ -59,8 +59,12 @@ import { MediaPipeHandInput } from '../input/MediaPipeHandInput'
  * The cannon fires a ball into one of three lanes, and the player must hit with
  * correct timing while the ball overlaps the temporary “REACT NOW!” hit zone.
  */
+const STARTING_DIFFICULTY: DifficultyLevel = 'medium'
+const SHOW_DIFFICULTY_DEBUG = true
+
 export class GameScene extends Phaser.Scene {
   private inputController!: InputController
+  private difficultyManager!: DifficultyManager
 
   private state: GameStateType = GameState.Initializing
   private stateTimeMs = 0
@@ -92,6 +96,7 @@ export class GameScene extends Phaser.Scene {
   private roundOverText!: Phaser.GameObjects.Text
   private initializingBackdrop!: Phaser.GameObjects.Rectangle
   private initializingText!: Phaser.GameObjects.Text
+  private difficultyDebugText: Phaser.GameObjects.Text | null = null
   private keySpace!: Phaser.Input.Keyboard.Key
   private keyEnter!: Phaser.Input.Keyboard.Key
   private keyEsc!: Phaser.Input.Keyboard.Key
@@ -105,6 +110,9 @@ export class GameScene extends Phaser.Scene {
     this.registry.set(RegistryKey.Misses, 0)
     this.registry.set(RegistryKey.Lives, STARTING_LIVES)
     this.registry.set(RegistryKey.TargetLane, '—')
+    const startingDifficulty = this.resolveStartingDifficultyLevel()
+    const difficultyOverrides = this.readDifficultyOverridesFromRegistry()
+    this.difficultyManager = new DifficultyManager(startingDifficulty, difficultyOverrides)
 
     const keyboardInput = new KeyboardInputController(this)
     const webcamInput = new MediaPipeHandInput()
@@ -187,6 +195,7 @@ export class GameScene extends Phaser.Scene {
 
     this.scene.launch(SceneKey.UI)
     this.scene.bringToTop(SceneKey.UI)
+    this.createDifficultyDebugDisplay()
 
     this.enterState(GameState.Initializing)
   }
@@ -217,7 +226,7 @@ export class GameScene extends Phaser.Scene {
       }
 
       case GameState.PreparingShot: {
-        if (this.stateTimeMs >= RESET_DELAY_MS) {
+        if (this.stateTimeMs >= this.getCurrentLaunchDelayMs()) {
           this.fireShot()
           this.enterState(GameState.BallInFlight)
         }
@@ -251,7 +260,7 @@ export class GameScene extends Phaser.Scene {
       }
 
       case GameState.ResolvingShot: {
-        if (this.stateTimeMs >= RESET_DELAY_MS) {
+        if (this.stateTimeMs >= this.getCurrentLaunchDelayMs()) {
           const lives = this.getLives()
           if (lives <= 0) {
             this.enterState(GameState.RoundOver)
@@ -276,6 +285,7 @@ export class GameScene extends Phaser.Scene {
 
     const nowMs = performance.now()
     this.tryConsumeBufferedWebcamHit(nowMs)
+    this.refreshDifficultyDebugDisplay()
   }
 
   private enterState(next: GameStateType): void {
@@ -334,7 +344,7 @@ export class GameScene extends Phaser.Scene {
     const control = new Phaser.Math.Vector2(peakX, peakY)
 
     this.currentShot = new PerspectiveShot({
-      durationMs: SHOT_DURATION_MS,
+      durationMs: this.computeShotDurationMs(this.difficultyManager.getCurrentLaunchSpeed()),
       endpoints: {
         start,
         control,
@@ -519,6 +529,7 @@ export class GameScene extends Phaser.Scene {
     this.shotResolved = true
     const hits = this.getHits()
     this.registry.set(RegistryKey.Hits, hits + 1)
+    this.difficultyManager.updateOnHit()
   }
 
   private onMissedShot(): void {
@@ -528,6 +539,94 @@ export class GameScene extends Phaser.Scene {
 
     const lives = this.getLives()
     this.registry.set(RegistryKey.Lives, Math.max(0, lives - 1))
+    this.difficultyManager.updateOnMiss()
+  }
+
+  private resolveStartingDifficultyLevel(): DifficultyLevel {
+    const rawDifficulty = this.registry.get(RegistryKey.Difficulty)
+    if (typeof rawDifficulty !== 'string') return STARTING_DIFFICULTY
+
+    const normalized = rawDifficulty.trim().toLowerCase()
+    if (normalized === 'easy' || normalized === 'medium' || normalized === 'hard') {
+      return normalized
+    }
+    return STARTING_DIFFICULTY
+  }
+
+  private readDifficultyOverridesFromRegistry(): Partial<DifficultyConfig> {
+    const overrides: Partial<DifficultyConfig> = {}
+    const growth = this.readNumericRegistryValue(RegistryKey.GrowthSpeed)
+    if (growth !== undefined) {
+      overrides.difficultyGrowth = growth
+    }
+
+    const streakThreshold = this.readNumericRegistryValue(RegistryKey.StreakThreshhold)
+    if (streakThreshold !== undefined) {
+      overrides.streakThreshold = streakThreshold
+    }
+
+    const launchDelaySeconds = this.readNumericRegistryValue(RegistryKey.LaunchDelay)
+    if (launchDelaySeconds !== undefined) {
+      overrides.startingLaunchDelay = launchDelaySeconds * 1000
+    }
+
+    const legacyBallSpeed = this.readNumericRegistryValue(RegistryKey.BallSpeed)
+    if (legacyBallSpeed !== undefined) {
+      overrides.startingLaunchSpeed = this.mapLegacyBallSpeedToLaunchSpeed(legacyBallSpeed)
+    }
+
+    return overrides
+  }
+
+  private readNumericRegistryValue(key: string): number | undefined {
+    const value = this.registry.get(key)
+    if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
+      return undefined
+    }
+    return value
+  }
+
+  private mapLegacyBallSpeedToLaunchSpeed(ballSpeed: number): number {
+    if (ballSpeed <= 1) return 0.85
+    if (ballSpeed <= 2) return 1
+    return 1.2
+  }
+
+  private getCurrentLaunchDelayMs(): number {
+    return this.difficultyManager.getCurrentLaunchDelayMs()
+  }
+
+  private computeShotDurationMs(launchSpeed: number): number {
+    const durationMs = SHOT_DURATION_MS / Math.max(launchSpeed, 0.1)
+    return Phaser.Math.Clamp(durationMs, 280, 2400)
+  }
+
+  private createDifficultyDebugDisplay(): void {
+    if (!SHOW_DIFFICULTY_DEBUG) return
+    this.difficultyDebugText = this.add
+      .text(GAME_WIDTH - 12, 12, '', {
+        fontSize: '14px',
+        color: '#ffffff',
+        align: 'right',
+      })
+      .setOrigin(1, 0)
+      .setDepth(1200)
+      .setScrollFactor(0)
+    this.refreshDifficultyDebugDisplay()
+  }
+
+  private refreshDifficultyDebugDisplay(): void {
+    if (!this.difficultyDebugText) return
+    const snapshot = this.difficultyManager.getSnapshot()
+    this.difficultyDebugText.setText([
+      '[debug] Dynamic Difficulty',
+      `Level: ${snapshot.currentDifficultyLevel}`,
+      `Launch speed: ${snapshot.currentLaunchSpeed.toFixed(2)}x`,
+      `Launch delay: ${Math.round(snapshot.currentLaunchDelay)}ms`,
+      `Hit streak: ${snapshot.hitStreak}/${snapshot.streakThreshold}`,
+      `Miss count: ${snapshot.missCount}`,
+      `Growth: ${(snapshot.difficultyGrowth * 100).toFixed(0)}%`,
+    ])
   }
 
   private getHits(): number {
