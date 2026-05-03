@@ -538,7 +538,9 @@ export class GameScene extends Phaser.Scene {
     this.registry.set(RegistryKey.Misses, misses + 1)
 
     const lives = this.getLives()
-    this.registry.set(RegistryKey.Lives, Math.max(0, lives - 1))
+    if (!this.registry.get('endlessMode')){
+      this.registry.set(RegistryKey.Lives, Math.max(0, lives - 1))
+    }
     this.difficultyManager.updateOnMiss()
   }
 
