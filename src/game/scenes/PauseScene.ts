@@ -67,5 +67,18 @@ export class PauseScene extends Phaser.Scene {
                 this.scene.stop()
             })
             .setOrigin(0.5)
+        this.add
+            .text(GAME_WIDTH/2, GAME_HEIGHT/2 + 200, 'End Game',{
+                fontSize: '20px',
+                color: '#ff0000',
+            })
+            .setInteractive({useHandCursor: true})
+            .on('pointerdown',() => {
+                this.scene.start(SceneKey.Menu)
+                this.scene.stop(SceneKey.Game)
+                this.scene.stop(SceneKey.UI)
+                this.scene.stop(SceneKey.Pause)
+            })
+            .setOrigin(0.5)
   }
 }
