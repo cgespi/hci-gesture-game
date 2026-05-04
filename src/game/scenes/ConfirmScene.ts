@@ -53,6 +53,12 @@ export class ConfirmScene extends Phaser.Scene {
       fontSize: '16px', color: endlessColor,
     }).setOrigin(0.5)
 
+    const movingCannonColor = this.registry.get('movingCannon') ? '#2ecc71' : '#e74c3c'
+    this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 + 10,
+      'Moving Cannon: ' + (this.registry.get('movingCannon') ? 'ON' : 'OFF'), {
+      fontSize: '16px', color: movingCannonColor,
+    }).setOrigin(0.5)
+
     // divider line
     const line = this.add.graphics()
     line.lineStyle(1, 0xffffff, 0.2)

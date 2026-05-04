@@ -52,10 +52,17 @@ export class PauseScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     const endlessColor = this.registry.get('endlessMode') ? '#2ecc71' : '#e74c3c'
-    this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 35,
+    this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 40,
       'Endless: ' + (this.registry.get('endlessMode') ? 'ON' : 'OFF'), {
       fontSize: '15px', color: endlessColor,
     }).setOrigin(0.5)
+
+    const movingCannonColor = this.registry.get('movingCannon') ? '#2ecc71' : '#e74c3c'
+    this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 20,
+      'Moving Cannon: ' + (this.registry.get('movingCannon') ? 'ON' : 'OFF'), {
+      fontSize: '16px', color: movingCannonColor,
+    }).setOrigin(0.5)
+
 
     // Pause actions.
     // buttons

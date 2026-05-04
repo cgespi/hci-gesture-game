@@ -181,6 +181,7 @@ export const RegistryKey = {
   GrowthSpeed: 'growthSpeed',
   EndlessMode: 'endlessMode',
   MusicToggle: 'musicToggle',
+  MovingCannon: 'movingCannon',
 } as const
 
 // We keep music in a mutable object so all scenes can pause/resume the same sound instance.
