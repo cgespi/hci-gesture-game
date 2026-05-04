@@ -136,6 +136,10 @@ export class GameScene extends Phaser.Scene {
     const groundHeight = Math.round(GAME_HEIGHT * GROUND_HEIGHT_RATIO)
     const groundTopY = GAME_HEIGHT - groundHeight
 
+    if (!this.registry.get('movingCannon')){
+      this.cannonVelocityX = 0
+    }
+
 
   // We draw layered court background pieces first so gameplay sprites can sit above them.
   // ── Ground base
