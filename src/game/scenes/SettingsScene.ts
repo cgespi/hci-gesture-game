@@ -105,9 +105,9 @@ export class SettingsScene extends Phaser.Scene {
     else if (currentDiff === 'Medium') mediumButton.setFontSize('26px')
     else hardButton.setFontSize('26px')
 
-    // We expose growth speed as a draggable slider mapped to 0..45%.
-    // growth speed label + slider 
-    this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 68, 'Growth Speed (0% – 45%)', {
+    // We expose growth speed as a draggable slider mapped to 0..0.45.
+    // growth speed range label + slider
+    this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 68, '0 - 0.45', {
       fontSize: '16px', color: '#aaaacc',
     }).setOrigin(0.5)
 
@@ -121,10 +121,27 @@ export class SettingsScene extends Phaser.Scene {
     const currentGrowthSpeed = Phaser.Math.Clamp(
       this.registry.get(RegistryKey.GrowthSpeed) as number, 0, maxGrowthSpeed
     )
+
+    const formatGrowthSpeed = (value: number): string =>
+      value.toFixed(3).replace(/\.?0+$/, '')
+
     widget.x = ((currentGrowthSpeed / maxGrowthSpeed) * 200) + (GAME_WIDTH/2 - 100)
     widget.y = GAME_HEIGHT/2 - 45
     widget.fillCircle(0, 0, 10)
     widget.setInteractive(new Phaser.Geom.Circle(0, 0, 10), Phaser.Geom.Circle.Contains)
+
+    const growthValueText = this.add.text(
+      GAME_WIDTH/2,
+      GAME_HEIGHT/2 - 26,
+      formatGrowthSpeed(currentGrowthSpeed),
+      {
+        fontSize: '18px',
+        color: '#00e5ff',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 3,
+      }
+    ).setOrigin(0.5)
 
     const widgetInput = widget.input
     if (widgetInput) { widgetInput.draggable = true; widgetInput.cursor = 'pointer' }
@@ -136,15 +153,17 @@ export class SettingsScene extends Phaser.Scene {
       const sliderValue = Phaser.Math.Clamp(dragX, sliderLeft, sliderRight)
       widget.x = sliderValue
       const normalized = (sliderValue - sliderLeft) / 200
-      this.registry.set(RegistryKey.GrowthSpeed, normalized * maxGrowthSpeed)
+      const growthValue = normalized * maxGrowthSpeed
+      this.registry.set(RegistryKey.GrowthSpeed, growthValue)
+      growthValueText.setText(formatGrowthSpeed(growthValue))
     })
 
     //divider
     const line2 = this.add.graphics()
     line2.lineStyle(1, 0xffffff, 0.2)
     line2.beginPath()
-    line2.moveTo(GAME_WIDTH/2 - 210, GAME_HEIGHT/2 - 18)
-    line2.lineTo(GAME_WIDTH/2 + 210, GAME_HEIGHT/2 - 18)
+    line2.moveTo(GAME_WIDTH/2 - 210, GAME_HEIGHT/2 + 4)
+    line2.lineTo(GAME_WIDTH/2 + 210, GAME_HEIGHT/2 + 4)
     line2.strokePath()
 
     // Endless mode toggle keeps lives from decreasing after misses.
