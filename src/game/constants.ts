@@ -180,3 +180,9 @@ export const RegistryKey = {
   GrowthSpeed: 'growthSpeed',
   EndlessMode: 'endlessMode',
 } as const
+
+//for the music, needs to be an object so it knows when to pause/play across scenes
+export const MusicRef = {
+  music: null as Phaser.Sound.BaseSound | null
+};
+
