@@ -103,6 +103,7 @@ export class GameScene extends Phaser.Scene {
 
   //moving cannon parameters
   private cannonVelocityX = 80  // pixels per second
+  private cannonNozzle!: Phaser.GameObjects.Image
 
 
   constructor() {
@@ -294,6 +295,15 @@ export class GameScene extends Phaser.Scene {
       .rectangle(GAME_WIDTH / 2, cannonY, CANNON_WIDTH, CANNON_HEIGHT, CANNON_COLOR)
       .setOrigin(0.5, 1)
 
+      // Cannon nozzle
+    this.cannonNozzle = this.add
+      .image(this.cannon.x, this.cannon.y - CANNON_HEIGHT / 2, 'barrel')
+      .setOrigin(0.5, 0.8)   // ad
+      .setScale(0.09,0.07)         // adjust ut
+      .setDepth(7)
+      this.cannonNozzle.setRotation(-Math.PI / 2)
+
+
         // Shadow renders behind the ball and grows as it approaches.
     this.shadow = this.add
       .ellipse(this.cannon.x, this.cannon.y, SHADOW_WIDTH_RADIUS * 2, SHADOW_HEIGHT_RADIUS * 2, SHADOW_COLOR, SHADOW_MIN_ALPHA)
@@ -391,6 +401,14 @@ export class GameScene extends Phaser.Scene {
       this.cannon.x = cannonMinX
       this.cannonVelocityX = Math.abs(this.cannonVelocityX)
     }
+    //cannon nozzle follows the cannon
+    this.cannonNozzle.x = this.cannon.x
+    this.cannonNozzle.y = this.cannon.y - CANNON_HEIGHT / 2
+
+    // aim toward the center/player side based on cannon position
+
+
+
 
     this.inputController.update(dtMs / 1000)
 
@@ -493,6 +511,17 @@ export class GameScene extends Phaser.Scene {
     this.initializingBackdrop.setVisible(showInitializingOverlay)
     this.initializingText.setVisible(showInitializingOverlay)
   }
+    private aimCannonAt(targetX: number, targetY: number): void {
+      const nozzleX = this.cannon.x
+      const nozzleY = this.cannon.y - CANNON_HEIGHT / 2
+
+      this.cannonNozzle.x = nozzleX
+      this.cannonNozzle.y = nozzleY
+
+      const angle = Phaser.Math.Angle.Between(nozzleX, nozzleY, targetX, targetY)
+
+      this.cannonNozzle.setRotation(angle + Math.PI / 2)
+    }
 
   private fireShot(): void {
     this.shotResolved = false
@@ -505,6 +534,14 @@ export class GameScene extends Phaser.Scene {
     this.bufferedWebcamAction = null
     this.bufferedWebcamAtMs = Number.NEGATIVE_INFINITY
     this.lastHitZoneSeenAtMs = Number.NEGATIVE_INFINITY
+    const originalScaleX = this.cannonNozzle.scaleX
+    const originalScaleY = this.cannonNozzle.scaleY
+
+    this.cannonNozzle.setScale(originalScaleX * 1.08, originalScaleY * 1.08)
+
+    this.time.delayedCall(80, () => {
+      this.cannonNozzle.setScale(originalScaleX, originalScaleY)
+    })
 
     const lanes: Lane[] = ['left', 'center', 'right']
     this.targetLane = Phaser.Utils.Array.GetRandom(lanes)
@@ -520,9 +557,12 @@ export class GameScene extends Phaser.Scene {
     // - Curves down toward the selected lane near point while scaling up
     const start = new Phaser.Math.Vector2(this.cannon.x, this.cannon.y - CANNON_HEIGHT - BALL_RADIUS)
     const end = new Phaser.Math.Vector2(LANE_NEAR_POINTS[this.targetLane].x, LANE_NEAR_POINTS[this.targetLane].y)
+   
+
     const peakX = Phaser.Math.Linear(start.x, end.x, SHOT_ARC_PEAK_T)
     const peakY = Math.min(start.y, end.y) - SHOT_ARC_HEIGHT_PX
     const control = new Phaser.Math.Vector2(peakX, peakY)
+     this.aimCannonAt(control.x, control.y)
 
     this.currentShot = new PerspectiveShot({
       durationMs: this.computeShotDurationMs(this.difficultyManager.getCurrentLaunchSpeed()),

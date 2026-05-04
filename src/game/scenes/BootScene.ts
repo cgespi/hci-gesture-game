@@ -11,6 +11,9 @@ export class BootScene extends Phaser.Scene {
   this.load.image('cloud2', 'background/PNG/cloud2.png')
   this.load.image('cloud3', 'background/PNG/cloud3.png')
 
+  //barrel nozzle
+  this.load.image('barrel', 'assets/barrel.png')
+
 
   //sides
   this.load.image('fence', 'background/PNG/fence.png')
