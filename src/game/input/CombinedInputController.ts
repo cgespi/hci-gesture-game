@@ -1,8 +1,8 @@
 import type { HitInputEvent, InputController } from './InputController'
 
 /**
- * Combines multiple input sources and exposes one hit action per frame.
- * Keyboard is read first so debug/fallback controls stay deterministic.
+ * We combine multiple input sources and expose one hit action per frame.
+ * We read keyboard first so fallback/debug controls stay deterministic.
  */
 export class CombinedInputController implements InputController {
   private readonly keyboardInput: InputController
@@ -14,6 +14,7 @@ export class CombinedInputController implements InputController {
   }
 
   update(dtSeconds: number): void {
+    // We update both controllers every frame so readiness/state remains synchronized.
     this.keyboardInput.update(dtSeconds)
     this.webcamInput.update(dtSeconds)
   }
@@ -23,6 +24,7 @@ export class CombinedInputController implements InputController {
   }
 
   consumeHitAction(): HitInputEvent | null {
+    // We prioritize keyboard events, then fallback to webcam for the same frame.
     const keyboardAction = this.keyboardInput.consumeHitAction()
     if (keyboardAction) return keyboardAction
     return this.webcamInput.consumeHitAction()

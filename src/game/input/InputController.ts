@@ -7,20 +7,19 @@ export type HitInputEvent = {
 }
 
 /**
- * Input abstraction layer.
+ * Our input abstraction layer.
  *
- * Gameplay code should depend on this interface (not on keyboard/webcam APIs).
- * Later we can implement a GestureInputController (MediaPipe) without touching
- * the gameplay state machine.
+ * We keep gameplay dependent on this interface (not raw keyboard/webcam APIs),
+ * so we can swap input sources without rewriting the gameplay state machine.
  */
 export interface InputController {
   /**
-   * Allow the controller to update internal state each frame (edge detection, smoothing, etc.).
+   * We update controller internals each frame (edge detection, smoothing, etc.).
    */
   update(dtSeconds: number): void
 
   /**
-   * Returns true when the input source is ready for gameplay.
+   * Returns true when this input source is ready for gameplay.
    * For always-available inputs (for example keyboard), this should return true.
    */
   isReady(): boolean
@@ -28,8 +27,8 @@ export interface InputController {
   /**
    * Returns a hit action triggered during the *current frame* (since the last `update()` call).
    *
-   * Important: this should NOT “queue up” inputs across time, because gameplay needs to
-   * distinguish “pressed at the right moment” vs “pressed early”.
+   * We intentionally avoid long-lived input queues, because our gameplay needs to
+   * distinguish "pressed at the right moment" vs "pressed early".
    */
   consumeHitAction(): HitInputEvent | null
 

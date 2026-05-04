@@ -1,12 +1,12 @@
 /**
- * Fake first-person “3D” ping-pong court in 2D.
+ * We fake a first-person “3D” ping-pong court using only 2D drawing/math.
  *
- * Court space uses normalized coordinates:
+ * Our court space uses normalized coordinates:
  * - `xNorm` in [-1, 1]: full width at that depth (left sideline → right sideline).
  * - `zNorm` in [0, 1]: depth from far (opponent, top) to near (player, below screen).
  *
  * Screen Y grows downward. We map depth with a power curve and add bottom overscan so the
- * near baseline can sit below the canvas—player feels inside the court, not above a board.
+ * near baseline can sit below the canvas. This helps our player viewpoint feel "inside" court space.
  */
 
 import { GAME_HEIGHT, GAME_WIDTH } from '../constants.ts'
@@ -42,6 +42,7 @@ export type ProjectedCourtPoint = {
 }
 
 export function lerp(a: number, b: number, t: number): number {
+  // We keep interpolation helpers local so perspective math stays readable.
   return a + (b - a) * t
 }
 
@@ -52,10 +53,9 @@ export function clamp01(t: number): number {
 }
 
 /**
- * Maps a point on the abstract court plane into screen pixels.
+ * We map a point on the abstract court plane into screen pixels.
  *
- * Depth easing: `te = zNorm ** depthExponent` drives both Y and width so horizontal slices
- * stay consistent (sidelines are straight chords of the frustum in court space).
+ * We use `te = zNorm ** depthExponent` for both Y and width so horizontal slices stay consistent.
  */
 export function projectCourtPoint(dims: TableDims, xNorm: number, zNorm: number): ProjectedCourtPoint {
   const z = clamp01(zNorm)
@@ -68,6 +68,7 @@ export function projectCourtPoint(dims: TableDims, xNorm: number, zNorm: number)
 }
 
 export function tableY(dims: TableDims, t: number): number {
+  // We centralize this lookup to avoid duplicating depth-to-screen conversion details.
   return projectCourtPoint(dims, 0, t).y
 }
 
@@ -82,6 +83,7 @@ export function tableHalfWidth(dims: TableDims, t: number): number {
  * @param laneOffset 0..1 fraction of local half-width (keeps ball inside sidelines)
  */
 export function tableX(dims: TableDims, t: number, laneSign: number, laneOffset: number): number {
+  // We keep lane placement proportional to local half-width so lanes stay inside sidelines at any depth.
   return projectCourtPoint(dims, laneSign * laneOffset, t).x
 }
 
@@ -105,7 +107,7 @@ export function trapezoidRow(dims: TableDims, t: number): TrapezoidCorners {
 }
 
 /**
- * Four corners of the table for fills: far-left, far-right, near-right, near-left.
+ * We return four corners for table fills: far-left, far-right, near-right, near-left.
  * Order is suitable for two triangles or a closed polygon path.
  */
 export function tableSurfaceQuad(dims: TableDims): {
@@ -130,7 +132,7 @@ export function tableSurfaceQuad(dims: TableDims): {
   }
 }
 
-/** Band between two depth slices (t0 < t1): quad corners for the semi-transparent hit zone. */
+/** We build a quad band between two depth slices (t0 < t1), useful for our hit-zone overlays. */
 export function hitBandQuad(
   dims: TableDims,
   t0: number,
@@ -152,14 +154,14 @@ export function hitBandQuad(
   }
 }
 
-/** Ratio of {@link ProjectedCourtPoint.widthScale} at the near edge (for ball size normalization). */
+/** We expose near-edge width scale to normalize sprite sizing against perspective. */
 export function widthScaleAtNear(dims: TableDims): number {
   return dims.nearHalfWidth / dims.farHalfWidth
 }
 
-/** Default court layout from {@link COURT_PERSPECTIVE}. */
+/** We provide a reusable default court layout tuned for our game viewport. */
 export function defaultTableDims(): TableDims {
-  // Legacy module retained for reference; no longer used by the cannon prototype.
+  // We keep this legacy table profile for reference even though the cannon prototype uses lane endpoints.
   const p = {
     horizonYRatio: 0.18,
     overscanBottom: 220,

@@ -1,12 +1,16 @@
 import Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, SceneKey, RegistryKey } from '../constants.ts'
 
+/**
+ * We expose gameplay tuning controls here and store choices in the shared registry.
+ */
 export class SettingsScene extends Phaser.Scene {
   constructor() {
     super({ key: SceneKey.Settings })
   }
 
   create() {
+    // We seed defaults once so settings always have valid values before first game launch.
     if (!this.registry.has('difficulty')) {
       this.registry.set(RegistryKey.Difficulty, 'Easy')
       this.registry.set(RegistryKey.BallSpeed, 1)
@@ -100,6 +104,7 @@ export class SettingsScene extends Phaser.Scene {
     else if (currentDiff === 'Medium') mediumButton.setFontSize('26px')
     else hardButton.setFontSize('26px')
 
+    // We expose growth speed as a draggable slider mapped to 0..45%.
     // growth speed label + slider 
     this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 68, 'Growth Speed (0% – 45%)', {
       fontSize: '16px', color: '#aaaacc',
@@ -141,6 +146,7 @@ export class SettingsScene extends Phaser.Scene {
     line2.lineTo(GAME_WIDTH/2 + 210, GAME_HEIGHT/2 - 18)
     line2.strokePath()
 
+    // Endless mode toggle keeps lives from decreasing after misses.
     // endless mode toggle button 
     const isEndless = this.registry.get('endlessMode')
     const endlessBtn = this.add.nineslice(
@@ -166,6 +172,7 @@ export class SettingsScene extends Phaser.Scene {
       endlessBtn.setTexture(nowOn ? 'btn-green' : 'btn-grey')
     })
 
+    // Global music toggle shared across scenes.
     // music toggle button
     const isMusicOn = this.registry.get(RegistryKey.MusicToggle)
     const musicBtn = this.add.nineslice(
@@ -205,6 +212,7 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   private makeButton(x: number, y: number, label: string, key: string, onClick: () => void) {
+    // We reuse the same button style helper to match the rest of our UI scenes.
     const btn = this.add.nineslice(x, y, key, undefined, 280, 50, 8, 8, 8, 8)
       .setOrigin(0.5).setInteractive({ useHandCursor: true })
     const text = this.add.text(x, y, label, {

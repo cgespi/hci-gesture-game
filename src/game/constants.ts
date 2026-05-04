@@ -1,5 +1,5 @@
 /**
- * Shared numbers and string keys so scenes stay in sync without magic literals.
+ * We keep shared numbers and string keys here so scenes stay in sync without magic literals.
  */
 
 export const GAME_WIDTH = 800
@@ -42,6 +42,7 @@ export const HIT_ZONE_Y = GAME_HEIGHT - HIT_ZONE_HEIGHT
 export type Lane = 'left' | 'center' | 'right'
 
 export function laneX(lane: Lane): number {
+  // We map lane labels to fixed X anchors so gameplay, visuals, and hit zones align.
   const center = GAME_WIDTH / 2
   const offset = GAME_WIDTH * 0.24
   if (lane === 'left') return center - offset
@@ -182,7 +183,7 @@ export const RegistryKey = {
   MusicToggle: 'musicToggle',
 } as const
 
-//for the music, needs to be an object so it knows when to pause/play across scenes
+// We keep music in a mutable object so all scenes can pause/resume the same sound instance.
 export const MusicRef = {
   music: null as Phaser.Sound.BaseSound | null
 };

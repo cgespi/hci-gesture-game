@@ -24,8 +24,8 @@ type HandPositionSample = {
 const HAND_CENTER_LANDMARKS = [0, 5, 9, 13, 17]
 
 /**
- * Optional webcam + MediaPipe controller.
- * If setup fails, this controller silently degrades to "no action" so keyboard remains usable.
+ * Our optional webcam + MediaPipe controller.
+ * If setup fails, we gracefully degrade to "no action" so keyboard play still works.
  */
 export class MediaPipeHandInput implements InputController {
   private handLandmarker: HandLandmarker | null = null
@@ -43,11 +43,13 @@ export class MediaPipeHandInput implements InputController {
   private disabled = false
 
   constructor() {
+    // We build overlay first so users immediately see webcam status while async setup runs.
     this.createDebugOverlay()
     void this.initialize()
   }
 
   update(_dtSeconds: number): void {
+    // We clear frame-local output first; each frame can emit at most one hit event.
     this.pendingHit = null
 
     if (!this.initialized || this.disabled || !this.videoEl || !this.handLandmarker) {
@@ -111,6 +113,7 @@ export class MediaPipeHandInput implements InputController {
   }
 
   private async initialize(): Promise<void> {
+    // We initialize MediaPipe first, then webcam stream, so failures can be reported precisely.
     if (!navigator.mediaDevices?.getUserMedia) {
       this.disableController('Webcam API not available.')
       return
@@ -190,12 +193,14 @@ export class MediaPipeHandInput implements InputController {
   }
 
   private resolveLaneFromX(x: number): HitAction {
+    // We map normalized hand X into 3 lanes using tuned threshold constants.
     if (x < HAND_LANE_LEFT_MAX_X) return 'left'
     if (x > HAND_LANE_RIGHT_MIN_X) return 'right'
     return 'center'
   }
 
   private recordHandSample(x: number, y: number, nowMs: number): void {
+    // We keep a rolling motion window for swipe detection and trim old samples aggressively.
     this.handXHistory.push({ x, y, timeMs: nowMs })
     const minTimeMs = nowMs - WEBCAM_SWIPE_WINDOW_MS
     while (this.handXHistory.length > 0 && this.handXHistory[0].timeMs < minTimeMs) {
@@ -213,12 +218,13 @@ export class MediaPipeHandInput implements InputController {
     const movementDistance = Math.hypot(deltaX, deltaY)
     if (movementDistance < Math.max(WEBCAM_SWIPE_MIN_DELTA_X, WEBCAM_SWIPE_JITTER_DEADZONE_X)) return null
 
-    // Rearm by collapsing to newest sample so one swipe does not repeatedly fire.
+    // We rearm by collapsing to newest sample so one swipe does not repeatedly fire.
     this.handXHistory = [{ x: latest.x, y: latest.y, timeMs: latest.timeMs }]
     return lane
   }
 
   private emitHitIfReady(action: HitAction, nowMs: number): void {
+    // We enforce cooldown so held poses and noisy landmarks do not spam repeated hit events.
     if (nowMs - this.lastWebcamHitAtMs < WEBCAM_HIT_COOLDOWN_MS) {
       return
     }
@@ -232,6 +238,7 @@ export class MediaPipeHandInput implements InputController {
   }
 
   private getModelAssetPath(): string {
+    // We support both hosted and local model paths to simplify offline demos/testing.
     if (!USE_LOCAL_HAND_LANDMARKER_MODEL) {
       return DEFAULT_HAND_LANDMARKER_MODEL_URL
     }
@@ -239,6 +246,7 @@ export class MediaPipeHandInput implements InputController {
   }
 
   private createDebugOverlay(): void {
+    // We attach a lightweight DOM overlay so webcam + inferred lane are visible during playtests.
     const appRoot = document.getElementById('app')
     if (!appRoot) return
 
@@ -273,6 +281,7 @@ export class MediaPipeHandInput implements InputController {
   }
 
   private disableController(message: string, error?: unknown): void {
+    // We disable cleanly and leave keyboard gameplay unaffected if webcam/model setup fails.
     this.disabled = true
     this.initialized = false
     this.updateDebugLabel('NO HAND')

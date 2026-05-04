@@ -52,10 +52,10 @@ import { KeyboardInputController } from '../input/KeyboardInputController'
 import { MediaPipeHandInput } from '../input/MediaPipeHandInput'
 
 /**
- * Lane-based “cannon reaction” prototype.
+ * Our main lane-based “cannon reaction” gameplay scene.
  *
- * The cannon fires a ball into one of three lanes, and the player must hit with
- * correct timing while the ball overlaps the temporary “REACT NOW!” hit zone.
+ * We fire a ball into one of three lanes, then require matching direction + timing
+ * while the ball overlaps the temporary “REACT NOW!” hit zone.
  */
 const STARTING_DIFFICULTY: DifficultyLevel = 'medium'
 const SHOW_DIFFICULTY_DEBUG = true
@@ -112,6 +112,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // We initialize shared HUD/gameplay counters in the registry for UI scene syncing.
     this.registry.set(RegistryKey.Hits, 0)
     this.registry.set(RegistryKey.Misses, 0)
     this.registry.set(RegistryKey.Lives, STARTING_LIVES)
@@ -137,6 +138,7 @@ export class GameScene extends Phaser.Scene {
     const groundTopY = GAME_HEIGHT - groundHeight
 
 
+  // We draw layered court background pieces first so gameplay sprites can sit above them.
   // ── Ground base
   this.add
     .rectangle(0, groundTopY, GAME_WIDTH, groundHeight, GROUND_COLOR)
@@ -198,8 +200,7 @@ export class GameScene extends Phaser.Scene {
 
 
 
-  //service line (halfway between baseline and net, perspective scaled)
-  // 
+  // We place service line and center T using the same perspective anchors as sidelines.
   const serviceLineY = groundTopY + (GAME_HEIGHT - groundTopY) * 0.45
   const serviceLineLeftX  = Phaser.Math.Linear(leftSinglesFar,  leftSinglesNear,  0.45)
   const serviceLineRightX = Phaser.Math.Linear(rightSinglesFar, rightSinglesNear, 0.45)
@@ -290,13 +291,13 @@ export class GameScene extends Phaser.Scene {
   this.add.image(GAME_WIDTH - 40,  groundTopY + 10, 'grass1').setScale(0.6).setDepth(3).setFlipX(true)
   this.add.image(GAME_WIDTH - 100, groundTopY + 10, 'grass2').setScale(0.5).setDepth(3).setFlipX(true)
 
-    // Place cannon directly on the sky/field boundary line.
+    // We place the cannon directly on the sky/field boundary to read as "far court".
     const cannonY = groundTopY
     this.cannon = this.add
       .rectangle(GAME_WIDTH / 2, cannonY, CANNON_WIDTH, CANNON_HEIGHT, CANNON_COLOR)
       .setOrigin(0.5, 1)
 
-      // Cannon nozzle
+      // We keep a separate nozzle sprite so we can rotate aim without distorting the base.
     this.cannonNozzle = this.add
       .image(this.cannon.x, this.cannon.y - CANNON_HEIGHT / 2, 'barrel')
       .setOrigin(0.5, 0.8)   // ad
@@ -305,7 +306,7 @@ export class GameScene extends Phaser.Scene {
       this.cannonNozzle.setRotation(-Math.PI / 2)
 
 
-        // Shadow renders behind the ball and grows as it approaches.
+    // We render a pseudo-shadow to reinforce depth without expensive lighting.
     this.shadow = this.add
       .ellipse(this.cannon.x, this.cannon.y, SHADOW_WIDTH_RADIUS * 2, SHADOW_HEIGHT_RADIUS * 2, SHADOW_COLOR, SHADOW_MIN_ALPHA)
       .setOrigin(0.5, 0.5)
@@ -334,6 +335,7 @@ export class GameScene extends Phaser.Scene {
       this.hitZoneLabel.setVisible(false)
     }
 
+// We prebuild the game-over panel once, then just toggle/refresh it when lives hit zero.
 // ── Game Over Panel ──────────────────────────────────
 const goPanel = this.add.graphics()
 goPanel.fillStyle(0x0a0a1a, 0.96)
@@ -458,7 +460,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
 
 
 
-    // Looping wind ambience or maybe music ?
+  // We reuse one looping ambience instance across restarts to avoid duplicate playback.
   if (MusicRef.music){
     if (MusicRef.music.isPlaying){ //is already playing and the game is being restarted
       MusicRef.music.stop()
@@ -495,7 +497,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
 
     const dtMs = Math.min(deltaMs, 50)
     this.stateTimeMs += dtMs
-        // Move cannon left/right, bounce off edges
+    // We keep the cannon patrolling the far baseline to vary shot origin each round.
     const cannonHalfWidth = CANNON_WIDTH / 2
     const cannonMinX = GAME_WIDTH * 0.22 + cannonHalfWidth
     const cannonMaxX = GAME_WIDTH * 0.78 - cannonHalfWidth
@@ -509,7 +511,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
       this.cannon.x = cannonMinX
       this.cannonVelocityX = Math.abs(this.cannonVelocityX)
     }
-    //cannon nozzle follows the cannon
+    // We keep nozzle transform attached to the cannon body each frame.
     this.cannonNozzle.x = this.cannon.x
     this.cannonNozzle.y = this.cannon.y - CANNON_HEIGHT / 2
 
@@ -523,6 +525,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
     const event = this.inputController.consumeHitAction()
     if (event) this.handleInputEvent(event)
 
+    // We route frame logic through a state machine so each phase has clear rules.
     switch (this.state) {
       case GameState.Initializing: {
         if (this.inputController.isReady()) {
@@ -595,11 +598,12 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private enterState(next: GameStateType): void {
+    // We centralize entry behavior so each state transition resets only what it must.
     this.state = next
     this.stateTimeMs = 0
 
     if (next !== GameState.BallInFlight && next !== GameState.HitReturn && next !== GameState.MissFall) {
-      // reset transient shot visuals when leaving flight.
+      // We reset transient shot visuals whenever we leave an active shot animation state.
       this.currentShotInHitWindow = false
       this.hitZoneRect.setFillStyle(HIT_ZONE_COLOR, HIT_ZONE_FILL_ALPHA)
       this.ball.setFillStyle(BALL_COLOR)
@@ -637,6 +641,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
     this.initializingBackdrop.setVisible(showInitializingOverlay)
     this.initializingText.setVisible(showInitializingOverlay)
   }
+    // We rotate the cannon nozzle toward a target point (usually the shot arc control point).
     private aimCannonAt(targetX: number, targetY: number): void {
       const nozzleX = this.cannon.x
       const nozzleY = this.cannon.y - CANNON_HEIGHT / 2
@@ -650,6 +655,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
     }
 
   private fireShot(): void {
+    // We reset per-shot tracking so each launch starts from a clean state.
     this.shotResolved = false
     this.currentShotInHitWindow = false
     this.currentShot = null
@@ -677,10 +683,10 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
     this.hitZoneRect.setX(x)
     this.hitZoneLabel.setX(x)
 
-    // Create a pseudo-perspective shot:
-    // - Always starts at the cannon mouth (center)
-    // - Arcs upward into the sky
-    // - Curves down toward the selected lane near point while scaling up
+    // We build a pseudo-perspective shot:
+    // - Starts at the cannon mouth
+    // - Arcs upward first
+    // - Curves down toward the selected near lane while scaling up
     const start = new Phaser.Math.Vector2(this.cannon.x, this.cannon.y - CANNON_HEIGHT - BALL_RADIUS)
     const end = new Phaser.Math.Vector2(LANE_NEAR_POINTS[this.targetLane].x, LANE_NEAR_POINTS[this.targetLane].y)
    
@@ -706,6 +712,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private attemptHit(action: HitAction, allowLateGraceWindow = false): void {
+    // We keep a tiny wrapper so call sites read clearly for both keyboard and webcam paths.
     this.tryResolveShotFromInput(action, allowLateGraceWindow)
   }
 
@@ -715,13 +722,13 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
       return
     }
 
-    // Webcam input is buffered so early detections can still resolve when the ball
-    // enters the hit window shortly after camera/model latency.
+    // We buffer webcam detections so early camera/model results can still count when timing aligns.
     this.bufferedWebcamAction = event.action
     this.bufferedWebcamAtMs = event.timestampMs
   }
 
   private tryConsumeBufferedWebcamHit(nowMs: number): void {
+    // We consume buffered webcam intent only when the shot is active and timing is still valid.
     if (!this.bufferedWebcamAction) return
     if (this.state !== GameState.BallInFlight || this.shotResolved || !this.currentShot) {
       return
@@ -746,6 +753,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private tryResolveShotFromInput(action: HitAction, allowLateGraceWindow = false): void {
+    // We require both timing and lane checks, with optional grace for webcam latency.
     if (this.state !== GameState.BallInFlight) return
     if (this.shotResolved) return
     if (!this.currentShot) return
@@ -787,6 +795,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
 
     
 
+    // We use the same overlap check for both gameplay validation and player-facing visual feedback.
     // Flash the same exact zone used by hit validation.
     const inHitWindow = this.isBallOverlappingHitZone(s.x, s.y, s.scale)
     if (inHitWindow) {
@@ -806,6 +815,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private isBallOverlappingHitZone(ballX: number, ballY: number, ballScale: number): boolean {
+    // Circle-vs-rectangle overlap keeps hit checks stable as the ball scales toward the camera.
     const left = this.hitZoneRect.x - HIT_ZONE_WIDTH / 2
     const right = this.hitZoneRect.x + HIT_ZONE_WIDTH / 2
     const top = HIT_ZONE_Y
@@ -827,6 +837,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private beginOutcomeAnimationFromSnapshot(s: { x: number; y: number; scale: number; depth: number }): void {
+    // We snapshot the exact resolve frame so hit/miss outcomes animate from that same moment.
     this.outcomeStartX = s.x
     this.outcomeStartY = s.y
     this.outcomeStartScale = s.scale
@@ -834,6 +845,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private prepareMissFallTarget(): void {
+    // We project the current motion slope to make miss falls continue naturally off the current path.
     const remainingY = Math.max(1, BALL_MISS_FALL_END_Y - this.outcomeStartY)
     const downwardMotionY = this.shotMotionY > 0.001 ? this.shotMotionY : 1
     const slopeXPerY = this.shotMotionX / downwardMotionY
@@ -842,6 +854,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private updateHitReturn(): void {
+    // Successful hits return the ball toward center-top as a quick confirmation animation.
     const t = Phaser.Math.Clamp(this.stateTimeMs / BALL_RETURN_DURATION_MS, 0, 1)
     const x = Phaser.Math.Linear(this.outcomeStartX, GAME_WIDTH / 2, t)
     const y = Phaser.Math.Linear(this.outcomeStartY, BALL_RETURN_TARGET_Y, t)
@@ -855,6 +868,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private updateMissFall(): void {
+    // Misses continue downward and slightly scale up to emphasize "passed the player" depth.
     const t = Phaser.Math.Clamp(this.stateTimeMs / BALL_MISS_FALL_DURATION_MS, 0, 1)
     const x = Phaser.Math.Linear(this.outcomeStartX, this.missFallTargetX, t)
     const y = Phaser.Math.Linear(this.outcomeStartY, BALL_MISS_FALL_END_Y, t)
@@ -868,6 +882,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private setBallAndShadow(x: number, y: number, scale: number, depth: number): void {
+      // We keep all ball/shadow transforms together so depth cues stay synchronized.
       this.ball.setPosition(x, y)
       this.ball.setScale(scale)
 
@@ -887,6 +902,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
     }
 
   private onSuccessfulHit(): void {
+    // We update score + difficulty from one function so all successful-hit side effects stay together.
     this.shotResolved = true
 
     //sfx
@@ -899,6 +915,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private onMissedShot(): void {
+    // We update misses/lives/difficulty together so round resolution is always consistent.
     this.shotResolved = true
     this.sound.play('ball_miss', { volume: 0.3 })
     const misses = this.getMisses()
@@ -912,6 +929,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private resolveStartingDifficultyLevel(): DifficultyLevel {
+    // We map UI labels into normalized difficulty keys with a safe fallback.
     const rawDifficulty = this.registry.get(RegistryKey.Difficulty)
     if (typeof rawDifficulty !== 'string') return STARTING_DIFFICULTY
 
@@ -923,6 +941,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private readDifficultyOverridesFromRegistry(): Partial<DifficultyConfig> {
+    // We adapt settings-scene values into DifficultyManager config overrides.
     const overrides: Partial<DifficultyConfig> = {}
     const growth = this.readNumericRegistryValue(RegistryKey.GrowthSpeed)
     if (growth !== undefined) {
@@ -948,6 +967,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private readNumericRegistryValue(key: string): number | undefined {
+    // We guard against invalid registry data before feeding values into gameplay math.
     const value = this.registry.get(key)
     if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
       return undefined
@@ -956,6 +976,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private mapLegacyBallSpeedToLaunchSpeed(ballSpeed: number): number {
+    // We preserve old settings sliders by translating legacy speed buckets to launch multipliers.
     if (ballSpeed <= 1) return 0.85
     if (ballSpeed <= 2) return 1
     return 1.2
@@ -966,11 +987,13 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private computeShotDurationMs(launchSpeed: number): number {
+    // Faster launch speed means shorter flight time, clamped to a playable range.
     const durationMs = SHOT_DURATION_MS / Math.max(launchSpeed, 0.1)
     return Phaser.Math.Clamp(durationMs, 280, 2400)
   }
 
   private createDifficultyDebugDisplay(): void {
+    // We keep this overlay optional so instructors can inspect dynamic balancing during demos.
     if (!SHOW_DIFFICULTY_DEBUG) return
     this.difficultyDebugText = this.add
       .text(GAME_WIDTH - 12, 12, '', {
@@ -985,6 +1008,7 @@ this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compa
   }
 
   private refreshDifficultyDebugDisplay(): void {
+    // We refresh from the manager snapshot each frame for an always-current debug readout.
     if (!this.difficultyDebugText) return
     const snapshot = this.difficultyManager.getSnapshot()
     this.difficultyDebugText.setText([

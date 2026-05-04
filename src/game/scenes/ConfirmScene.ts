@@ -1,12 +1,16 @@
 import Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, SceneKey, RegistryKey } from '../constants.ts'
 
+/**
+ * We summarize selected settings before launch so players can confirm or edit once more.
+ */
 export class ConfirmScene extends Phaser.Scene {
   constructor() {
     super({ key: SceneKey.Confirm })
   }
 
   create() {
+    // We ensure sane defaults exist even if this scene is reached directly.
     if (!this.registry.has('difficulty')) {
       this.registry.set(RegistryKey.Difficulty, 'Easy')
       this.registry.set(RegistryKey.BallSpeed, 1)
@@ -17,6 +21,7 @@ export class ConfirmScene extends Phaser.Scene {
       this.registry.set(RegistryKey.MusicToggle, true)
     }
 
+    // Summary panel.
     // dark panel
     const panel = this.add.graphics()
     panel.fillStyle(0x000000, 0.6)
@@ -68,6 +73,7 @@ export class ConfirmScene extends Phaser.Scene {
   }
 
   private makeButton(x: number, y: number, label: string, key: string, onClick: () => void) {
+    // Shared button helper keeps layout and hover behavior consistent with other menu scenes.
     const btn = this.add.nineslice(x, y, key, undefined, 260, 50, 8, 8, 8, 8)
       .setOrigin(0.5).setInteractive({ useHandCursor: true })
     const text = this.add.text(x, y, label, {

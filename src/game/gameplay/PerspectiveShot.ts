@@ -15,9 +15,9 @@ export type PerspectiveShotParams = {
 }
 
 export type PerspectiveShotSnapshot = {
-  /** 0..1, linear time progress */
+  /** We keep linear time progress (0..1) for timing-based decisions. */
   rawProgress: number
-  /** 0..1, eased progress used for perspective feel */
+  /** We use eased depth (0..1) to make the ball feel like it rushes toward the player. */
   depth: number
   x: number
   y: number
@@ -36,6 +36,7 @@ export class PerspectiveShot {
   private readonly maxScale: number
 
   constructor(params: PerspectiveShotParams) {
+    // We clone vectors so each shot is independent from caller-owned objects.
     this.durationMs = Math.max(1, params.durationMs | 0)
     this.start = params.endpoints.start.clone()
     this.control = params.endpoints.control.clone()
@@ -45,11 +46,13 @@ export class PerspectiveShot {
   }
 
   update(dtMs: number): PerspectiveShotSnapshot {
+    // We only advance forward in time; negative deltas are ignored for safety.
     this.elapsedMs += Math.max(0, dtMs)
     return this.getSnapshot()
   }
 
   getSnapshot(): PerspectiveShotSnapshot {
+    // We compute a clamped progress ratio so interpolation never overshoots.
     const rawProgress = Phaser.Math.Clamp(this.elapsedMs / this.durationMs, 0, 1)
 
     // Stronger ease-in makes the ball feel like it accelerates toward the player.
@@ -66,12 +69,14 @@ export class PerspectiveShot {
   }
 
   private quadraticBezier(p0: number, p1: number, p2: number, t: number): number {
+    // We use the quadratic Bezier formula for an inexpensive curved trajectory.
     // B(t) = (1-t)^2*p0 + 2*(1-t)*t*p1 + t^2*p2
     const u = 1 - t
     return u * u * p0 + 2 * u * t * p1 + t * t * p2
   }
 
   reset(): void {
+    // We reuse the same shot instance in tests/debug by rewinding elapsed time.
     this.elapsedMs = 0
   }
 }

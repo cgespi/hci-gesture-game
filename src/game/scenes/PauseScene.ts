@@ -1,12 +1,16 @@
 import Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, SceneKey, MusicRef } from '../constants.ts'
 
+/**
+ * We pause active gameplay scenes and show a modal-style menu with resume/settings/end actions.
+ */
 export class PauseScene extends Phaser.Scene {
   constructor() {
     super({ key: SceneKey.Pause })
   }
 
   create() {
+    // We render a darkened overlay so pause controls read as a foreground modal.
     // full screen dark overlay
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.45).setOrigin(0, 0)
 
@@ -30,6 +34,7 @@ export class PauseScene extends Phaser.Scene {
     line.lineTo(GAME_WIDTH/2 + 200, GAME_HEIGHT/2 - 148)
     line.strokePath()
 
+    // We mirror key settings so the player can verify current run parameters at a glance.
     // info text
     this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 120, 'Current Settings', {
       fontSize: '16px', color: '#aaaacc',
@@ -52,6 +57,7 @@ export class PauseScene extends Phaser.Scene {
       fontSize: '15px', color: endlessColor,
     }).setOrigin(0.5)
 
+    // Pause actions.
     // buttons
     this.makeButton(GAME_WIDTH/2, GAME_HEIGHT/2 + 20, '▶  Resume Game', 'btn-green', () => {
       this.sound.play('menu_click', { volume: 0.5 })
@@ -78,6 +84,7 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private makeButton(x: number, y: number, label: string, key: string, onClick: () => void) {
+    // Shared button construction keeps interaction styling consistent with other menus.
     const btn = this.add.nineslice(x, y, key, undefined, 280, 50, 8, 8, 8, 8)
       .setOrigin(0.5).setInteractive({ useHandCursor: true })
     const text = this.add.text(x, y, label, {

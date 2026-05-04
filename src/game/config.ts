@@ -10,7 +10,8 @@ import { PauseScene } from './scenes/PauseScene.ts'
 
 
 /**
- * Central Phaser settings: size, colors, scaling, physics, and which scenes to register.
+ * We centralize Phaser settings here: canvas size, scaling behavior, physics defaults,
+ * and scene registration order for the whole project.
  */
 export function createGameConfig(): Phaser.Types.Core.GameConfig {
   return {

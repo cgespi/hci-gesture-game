@@ -1,12 +1,16 @@
 import Phaser from 'phaser'
 import { SceneKey } from '../constants.ts'
 
+/**
+ * We preload assets once at startup so later scenes can assume textures/audio are ready.
+ */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super({ key: SceneKey.Boot })
   }
 
   preload() {
+  // We group preload calls by feature area so it is easy to trace asset usage.
   this.load.image('cloud1', 'background/PNG/cloud1.png')
   this.load.image('cloud2', 'background/PNG/cloud2.png')
   this.load.image('cloud3', 'background/PNG/cloud3.png')
@@ -24,7 +28,7 @@ export class BootScene extends Phaser.Scene {
   this.load.image('grass2', 'background/PNG/grass2.png')
 
 
-  // Sound effects
+  // Sound effects and ambience used by gameplay/menu scenes.
   this.load.audio('ball_shoot', 'sfx/canon_shoot1.mp3')
   this.load.audio('menu_click', 'sfx/menu_click.mp3')
   this.load.audio('ball_miss',  'sfx/miss1.mp3')
@@ -32,7 +36,7 @@ export class BootScene extends Phaser.Scene {
   this.load.audio('wind',       'sfx/wind_ambience.mp3')//replaced with some game music 
   this.load.audio('hit_success', 'sfx/hit_confirm1.mp3')
 
-  //menu 
+  // Shared UI button sprites used across menu/settings/pause/confirm.
 
   this.load.image('btn-green',       'ui/Colored/green.png')
   this.load.image('btn-green-press', 'ui/Colored/green_pressed.png')
@@ -44,6 +48,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    // After preload, we hand control to the menu flow.
     this.scene.start(SceneKey.Menu)
   }
 }

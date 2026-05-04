@@ -2,8 +2,8 @@ import Phaser from 'phaser'
 import { RegistryKey, SceneKey } from '../constants.ts'
 
 /**
- * Heads-up display: score and other UI that should stay on top of {@link GameScene}.
- * Runs as a parallel scene (`launch`) so it does not replace the playfield.
+ * Our heads-up display scene for score/lives/target lane.
+ * We run it in parallel (`launch`) so gameplay keeps updating underneath.
  */
 export class UIScene extends Phaser.Scene {
   private hitsText!: Phaser.GameObjects.Text
@@ -16,6 +16,7 @@ export class UIScene extends Phaser.Scene {
   }
 
 create() {
+  // We seed HUD labels from registry state so UI is correct even on scene restarts.
   this.cameras.main.setScroll(0, 0)
 
   const hitsInitial = this.registry.get(RegistryKey.Hits)
@@ -72,6 +73,7 @@ create() {
     .setScrollFactor(0)
     .setDepth(1000)
 
+  // We listen once to registry changes instead of polling every frame.
   this.registry.events.on('changedata', this.onRegistryChanged, this)
 
   this.sys.events.once('shutdown', () => {
@@ -79,6 +81,7 @@ create() {
   })
 }
 private onRegistryChanged(_parent: object, key: string, value: unknown): void {
+  // We branch by key so each HUD element only updates when relevant data changes.
   if (key === RegistryKey.TargetLane) {
     if (typeof value !== 'string') return
     this.laneText.setText(`➤ Dir: ${value}`)

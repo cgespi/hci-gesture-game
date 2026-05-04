@@ -2,11 +2,11 @@ import Phaser from 'phaser'
 import type { HitAction, HitInputEvent, InputController } from './InputController'
 
 /**
- * Keyboard implementation of InputController:
+ * Our keyboard implementation of InputController:
  * - A => hit left
  * - D => hit right
  *
- * Uses "just pressed" edges so holding a key doesn't spam hits.
+ * We use "just pressed" edges so holding a key does not spam hits.
  */
 export class KeyboardInputController implements InputController {
   private readonly keyA: Phaser.Input.Keyboard.Key
@@ -20,6 +20,7 @@ export class KeyboardInputController implements InputController {
       throw new Error('KeyboardInputController requires a keyboard input plugin.')
     }
 
+    // We keep bindings explicit so controls are easy to explain in demos.
     this.keyA = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A)
     this.keyD = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
   }
@@ -37,6 +38,7 @@ export class KeyboardInputController implements InputController {
   }
 
   consumeHitAction(): HitInputEvent | null {
+    // We stamp events at consume time so gameplay can compare keyboard/webcam timings consistently.
     if (!this.hitThisFrame) return null
     return {
       action: this.hitThisFrame,

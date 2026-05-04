@@ -2,12 +2,16 @@
 import Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, SceneKey } from '../constants.ts'
 
+/**
+ * We use this scene as our front door: animated background, playful motion, and navigation buttons.
+ */
 export class MenuScene extends Phaser.Scene {
   constructor() {
     super({ key: SceneKey.Menu })
   }
 
   create() {
+    // We add ambient sparkles so the menu feels alive before gameplay starts.
     //particle sparkles 
     const particles = this.add.graphics()
     const sparkles: { x: number; y: number; alpha: number; speed: number; size: number }[] = []
@@ -41,6 +45,7 @@ export class MenuScene extends Phaser.Scene {
       },
     })
 
+    // We build a central panel that anchors title text and action buttons.
     // panel 
     const panelW = 520
     const panelH = 340
@@ -83,6 +88,7 @@ export class MenuScene extends Phaser.Scene {
       fontSize: '14px', color: '#2ecc71', fontStyle: 'italic',
     }).setOrigin(0.5)
 
+    // We run decorative mini-physics balls to reinforce the sports theme in the menu.
     //  Ball 1 — inside panel, bounces off buttons 
     const floorY   = panelY + panelH - 12
     const ceilingY = panelY + 12
@@ -329,6 +335,7 @@ export class MenuScene extends Phaser.Scene {
       },
     })
 
+    // Main menu actions.
     // buttons 
     this.makeButton(GAME_WIDTH/2, GAME_HEIGHT/2 + 20, '▶  Play', 'btn-green', () => {
       this.sound.play('menu_click', { volume: 0.5 })
@@ -342,6 +349,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private makeButton(x: number, y: number, label: string, key: string, onClick: () => void) {
+    // We keep one shared button factory so menu interactions feel consistent across scenes.
     const btn = this.add.nineslice(x, y, key, undefined, 280, 50, 8, 8, 8, 8)
       .setOrigin(0.5).setInteractive({ useHandCursor: true })
     const text = this.add.text(x, y, label, {

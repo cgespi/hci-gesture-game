@@ -21,6 +21,7 @@ export interface DifficultySnapshot {
   difficultyGrowth: number
 }
 
+/** We keep baseline presets here so scene code can switch difficulty with one label. */
 const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
   easy: {
     startingLaunchSpeed: 0.85,
@@ -72,6 +73,7 @@ export class DifficultyManager {
   private difficultyGrowth: number
 
   constructor(level: DifficultyLevel, overrides?: Partial<DifficultyConfig>) {
+    // We merge optional settings UI overrides on top of our preset defaults.
     this.currentDifficultyLevel = level
     this.config = this.mergeConfig(level, overrides)
     this.currentLaunchSpeed = this.config.startingLaunchSpeed
@@ -81,6 +83,7 @@ export class DifficultyManager {
   }
 
   updateOnHit(): void {
+    // We only ramp difficulty after a sustained hit streak, not every single successful hit.
     this.hitStreak += 1
     if (this.hitStreak < this.streakThreshold) return
 
@@ -98,6 +101,7 @@ export class DifficultyManager {
   }
 
   updateOnMiss(): void {
+    // We immediately cool difficulty down after misses to keep the game recoverable.
     this.hitStreak = 0
     this.missCount += 1
 
@@ -114,6 +118,7 @@ export class DifficultyManager {
   }
 
   reset(level = this.currentDifficultyLevel, overrides?: Partial<DifficultyConfig>): void {
+    // We reuse this when restarting rounds so difficulty always restarts from configured defaults.
     this.currentDifficultyLevel = level
     this.config = this.mergeConfig(level, overrides)
     this.currentLaunchSpeed = this.config.startingLaunchSpeed
@@ -133,6 +138,7 @@ export class DifficultyManager {
   }
 
   getSnapshot(): DifficultySnapshot {
+    // We expose a read-only snapshot for debug UI and telemetry-style displays.
     return {
       currentDifficultyLevel: this.currentDifficultyLevel,
       currentLaunchSpeed: this.currentLaunchSpeed,
@@ -151,6 +157,7 @@ export class DifficultyManager {
       ...overrides,
     }
 
+    // We sanitize all numeric fields so external registry values cannot break progression math.
     const growth = clamp(merged.difficultyGrowth, 0.01, 0.45)
     merged.difficultyGrowth = growth
     merged.streakThreshold = Math.max(1, Math.round(merged.streakThreshold))
