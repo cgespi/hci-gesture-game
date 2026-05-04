@@ -44,6 +44,7 @@ import {
   STARTING_LIVES,
   WEBCAM_EARLY_BUFFER_MS,
   WEBCAM_LATE_GRACE_MS,
+  MusicRef
 } from '../constants.ts'
 import { GameState, type GameState as GameStateType } from '../gameplay/GameState'
 import { DifficultyManager, type DifficultyConfig, type DifficultyLevel } from '../gameplay/DifficultyManager'
@@ -354,7 +355,17 @@ export class GameScene extends Phaser.Scene {
 
 
     // Looping wind ambience or maybe music ?
-  this.sound.play('wind', { loop: true, volume: 0.35 })
+  if (MusicRef.music){
+    if (MusicRef.music.isPlaying){ //is already playing and the game is being restarted
+      MusicRef.music.stop()
+    }
+  } else {//music doesn't exist yet
+    MusicRef.music =  this.sound.add('wind', { loop: true, volume: 0.35 })
+  }
+
+  if (this.registry.get('musicToggle')){
+    MusicRef.music.play();
+  }
 
   // Stop wind when scene shuts down
   this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -368,6 +379,9 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number): void {
     if (Phaser.Input.Keyboard.JustDown(this.keyEsc) && !this.scene.isActive(SceneKey.Pause) && this.state != GameState.RoundOver) {
+      if (MusicRef.music){
+        MusicRef.music.pause()
+      }
       this.scene.pause(SceneKey.UI)
       this.scene.launch(SceneKey.Pause)
       this.scene.bringToTop(SceneKey.Pause)
