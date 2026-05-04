@@ -105,6 +105,9 @@ export class GameScene extends Phaser.Scene {
   private cannonVelocityX = 80  // pixels per second
   private cannonNozzle!: Phaser.GameObjects.Image
 
+  private gameOverPanel!: Phaser.GameObjects.Graphics
+  private gameOverContainer!: Phaser.GameObjects.Container
+
 
   constructor() {
     super({ key: SceneKey.Game })
@@ -333,15 +336,108 @@ export class GameScene extends Phaser.Scene {
       this.hitZoneLabel.setVisible(false)
     }
 
-    this.roundOverText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
-        fontSize: '34px',
-        color: '#ffffff',
-        align: 'center',
-      })
-      .setOrigin(0.5)
-      .setDepth(1100)
-      .setVisible(false)
+// ── Game Over Panel ──────────────────────────────────
+const goPanel = this.add.graphics()
+goPanel.fillStyle(0x0a0a1a, 0.96)
+goPanel.fillRoundedRect(-220, -180, 440, 360, 16)
+goPanel.lineStyle(4, 0xe74c3c, 0.9)
+goPanel.strokeRoundedRect(-220, -180, 440, 360, 16)
+goPanel.lineStyle(2, 0xff6b6b, 0.4)
+goPanel.strokeRoundedRect(-217, -177, 434, 354, 14)
+
+// Broken heart icon
+const goIcon = this.add.image(-145, -140, 'heart-broken')
+  .setScale(0.03)  // adjust scale to fit
+  .setOrigin(0.5)
+
+// Title text without emoji
+const goTitle = this.add.text(20, -140, 'GAME OVER', {
+  fontSize: '36px', color: '#e74c3c', fontStyle: 'bold',
+  stroke: '#000000', strokeThickness: 5,
+}).setOrigin(0.5)
+
+const goDivider = this.add.graphics()
+goDivider.lineStyle(1, 0xffffff, 0.2)
+goDivider.beginPath()
+goDivider.moveTo(-180, -100)
+goDivider.lineTo(180, -100)
+goDivider.strokePath()
+
+const goHitsLabel = this.add.text(-60, -75, 'Hits', {
+  fontSize: '14px', color: '#aaaacc',
+}).setOrigin(0.5)
+
+const goHitsValue = this.add.text(-60, -50, '0', {
+  fontSize: '40px', color: '#2ecc71', fontStyle: 'bold',
+  stroke: '#000000', strokeThickness: 4,
+}).setOrigin(0.5)
+
+const goMissesLabel = this.add.text(60, -75, 'Misses', {
+  fontSize: '14px', color: '#aaaacc',
+}).setOrigin(0.5)
+
+const goMissesValue = this.add.text(60, -50, '0', {
+  fontSize: '40px', color: '#e74c3c', fontStyle: 'bold',
+  stroke: '#000000', strokeThickness: 4,
+}).setOrigin(0.5)
+
+const goDivider2 = this.add.graphics()
+goDivider2.lineStyle(1, 0xffffff, 0.2)
+goDivider2.beginPath()
+goDivider2.moveTo(-180, -10)
+goDivider2.lineTo(180, -10)
+goDivider2.strokePath()
+
+// Restart button
+const restartBtn = this.add.nineslice(0, 30, 'btn-green', undefined, 280, 50, 8, 8, 8, 8)
+  .setOrigin(0.5).setInteractive({ useHandCursor: true })
+const restartText = this.add.text(0, 30, '↺  Play Again', {
+  fontSize: '18px', color: '#ffffff', fontStyle: 'bold',
+  stroke: '#000000', strokeThickness: 3,
+}).setOrigin(0.5)
+
+restartBtn.on('pointerover', () => { restartBtn.setScale(1.05); restartText.setScale(1.05) })
+restartBtn.on('pointerout',  () => { restartBtn.setScale(1.0);  restartText.setScale(1.0) })
+restartBtn.on('pointerdown', () => {
+  this.sound.play('menu_click', { volume: 0.5 })
+  this.scene.stop(SceneKey.UI)
+  this.scene.restart()
+})
+
+// Settings button
+const goSettingsBtn = this.add.nineslice(0, 100, 'btn-blue', undefined, 280, 50, 8, 8, 8, 8)
+  .setOrigin(0.5).setInteractive({ useHandCursor: true })
+const goSettingsText = this.add.text(0, 100, '⚙  Edit Settings', {
+  fontSize: '18px', color: '#ffffff', fontStyle: 'bold',
+  stroke: '#000000', strokeThickness: 3,
+}).setOrigin(0.5)
+
+goSettingsBtn.on('pointerover', () => { goSettingsBtn.setScale(1.05); goSettingsText.setScale(1.05) })
+goSettingsBtn.on('pointerout',  () => { goSettingsBtn.setScale(1.0);  goSettingsText.setScale(1.0) })
+goSettingsBtn.on('pointerdown', () => {
+  this.sound.play('menu_click', { volume: 0.5 })
+  this.scene.stop(SceneKey.UI)
+  this.scene.start(SceneKey.Settings)
+})
+
+// Group everything into a container centered on screen
+this.gameOverContainer = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2, [
+  goPanel, goIcon, goTitle, goDivider, 
+  goHitsLabel, goHitsValue, 
+  goMissesLabel, goMissesValue,
+  goDivider2, restartBtn, restartText,
+  goSettingsBtn, goSettingsText,
+])
+.setDepth(1100)
+.setVisible(false)
+
+// Keep references to update values
+this.roundOverText = this.add.text(0, 0, '').setVisible(false) // keep for compatibility
+// Store value refs on the container for update
+;(this.gameOverContainer as any).hitsValue = goHitsValue
+;(this.gameOverContainer as any).missesValue = goMissesValue
+
+
 
     this.initializingBackdrop = this.add
       .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.5)
@@ -502,9 +598,27 @@ export class GameScene extends Phaser.Scene {
     if (next === GameState.RoundOver) {
       const hits = this.getHits()
       const misses = this.getMisses()
-      this.roundOverText.setText(`Game over\nHits: ${hits}\nMisses: ${misses}\n\nPress Enter to restart\n Press Space to edit settings`)
-      this.roundOverText.setVisible(true)
+      
+      // Update values in the panel
+      ;(this.gameOverContainer as any).hitsValue.setText(String(hits))
+      ;(this.gameOverContainer as any).missesValue.setText(String(misses))
+      
+      this.hitZoneRect.setVisible(false)
+      this.hitZoneLabel.setVisible(false)
+      this.gameOverContainer.setVisible(true)
+
+      // Animate panel in
+      this.gameOverContainer.setScale(0.8)
+      this.gameOverContainer.setAlpha(0)
+      this.tweens.add({
+        targets: this.gameOverContainer,
+        scale: 1,
+        alpha: 1,
+        duration: 300,
+        ease: 'Back.easeOut',
+      })
     } else {
+      this.gameOverContainer.setVisible(false)
       this.roundOverText.setVisible(false)
     }
 

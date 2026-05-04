@@ -13,6 +13,9 @@ export class BootScene extends Phaser.Scene {
 
   //barrel nozzle
   this.load.image('barrel', 'assets/barrel.png')
+  //heart broken
+
+  this.load.image('heart-broken', 'assets/heartu.png')
 
 
   //sides
