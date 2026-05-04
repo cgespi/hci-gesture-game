@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { GAME_HEIGHT, GAME_WIDTH, SceneKey, RegistryKey, MusicRef} from '../constants.ts'
+import { GAME_HEIGHT, GAME_WIDTH, SceneKey, MusicRef} from '../constants.ts'
 
 export class PauseScene extends Phaser.Scene {
   constructor() {

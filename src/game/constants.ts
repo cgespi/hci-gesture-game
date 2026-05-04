@@ -179,6 +179,7 @@ export const RegistryKey = {
   Difficulty: 'difficulty',
   GrowthSpeed: 'growthSpeed',
   EndlessMode: 'endlessMode',
+  MusicToggle: 'musicToggle',
 } as const
 
 //for the music, needs to be an object so it knows when to pause/play across scenes
