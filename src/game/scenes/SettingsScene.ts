@@ -13,6 +13,7 @@ export class SettingsScene extends Phaser.Scene {
             this.registry.set(RegistryKey.StreakThreshhold, 8) //higher value means slower difficulty growth, 8 = easy, 4 = medium, 2 = hard
             this.registry.set(RegistryKey.GrowthSpeed, 0.1) //higher value means higher difficulty growth
             this.registry.set(RegistryKey.EndlessMode, false)
+            this.registry.set(RegistryKey.MusicToggle, true)
         }
         this.add
             .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 200, 'Settings', {
@@ -36,6 +37,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 this.registry.set(RegistryKey.Difficulty, 'Easy')
                 this.registry.set(RegistryKey.BallSpeed, 1)
                 this.registry.set(RegistryKey.LaunchDelay, 2.0)
@@ -53,6 +55,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 this.registry.set(RegistryKey.Difficulty, 'Medium')
                 this.registry.set(RegistryKey.BallSpeed, 2)
                 this.registry.set(RegistryKey.LaunchDelay, 1.0)
@@ -70,6 +73,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 this.registry.set(RegistryKey.Difficulty, 'Hard')
                 this.registry.set(RegistryKey.BallSpeed, 3)
                 this.registry.set(RegistryKey.LaunchDelay, 0.5)
@@ -137,6 +141,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 if (this.registry.get('endlessMode')){
                     this.registry.set(RegistryKey.EndlessMode, false)
                     endlessButton.setColor('#ff0000')
@@ -154,6 +159,31 @@ export class SettingsScene extends Phaser.Scene {
                 endlessButton.setColor('#ff0000')
             }
 
+        const musicButton = this.add
+            .text(GAME_WIDTH/2, GAME_HEIGHT/2+140, 'Music',{
+                fontSize: '20px',
+                color: '#00ff55',
+            })
+            .setInteractive({useHandCursor: true})
+            .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
+                if (this.registry.get('musicToggle')){
+                    this.registry.set(RegistryKey.MusicToggle, false)
+                    musicButton.setColor('#ff0000')
+
+                } else {
+                    this.registry.set(RegistryKey.MusicToggle, true)
+                    musicButton.setColor('#00ff59')
+                }
+            })
+            .setOrigin(0.5)
+        
+        if (this.registry.get('musicToggle')){
+                musicButton.setColor('#00ff59')
+            } else {
+                musicButton.setColor('#ff0000')
+            }
+
         this.add
             .text(GAME_WIDTH/2, GAME_HEIGHT/2+200, 'Confirm',{
                 fontSize: '20px',
@@ -161,6 +191,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 if (this.scene.isPaused(SceneKey.Game)) {
                     this.scene.stop(SceneKey.UI)
                     this.scene.stop(SceneKey.Game)
@@ -172,4 +203,6 @@ export class SettingsScene extends Phaser.Scene {
             .setOrigin(0.5)
   }
 }
+
+
 

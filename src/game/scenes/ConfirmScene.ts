@@ -15,6 +15,7 @@ export class ConfirmScene extends Phaser.Scene {
             this.registry.set(RegistryKey.StreakThreshhold, 8) //higher value means slower difficulty growth, 8 = easy, 4 = medium, 2 = hard
             this.registry.set(RegistryKey.GrowthSpeed, 0.1) //higher value means higher difficulty growth
             this.registry.set(RegistryKey.EndlessMode, false) //higher value means higher difficulty growth
+            this.registry.set(RegistryKey.MusicToggle, true)
         }
 
          this.add
