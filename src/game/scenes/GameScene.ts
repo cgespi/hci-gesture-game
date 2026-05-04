@@ -103,7 +103,6 @@ export class GameScene extends Phaser.Scene {
   private cannonVelocityX = 80  // pixels per second
   private cannonNozzle!: Phaser.GameObjects.Image
 
-  private gameOverPanel!: Phaser.GameObjects.Graphics
   private gameOverContainer!: Phaser.GameObjects.Container
 
 
