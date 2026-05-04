@@ -19,6 +19,7 @@ export class SettingsScene extends Phaser.Scene {
       this.registry.set(RegistryKey.GrowthSpeed, 0.1)
       this.registry.set(RegistryKey.EndlessMode, false)
       this.registry.set(RegistryKey.MusicToggle, true)
+      this.registry.set(RegistryKey.MovingCannon, true)
     }
 
     // dark panel can change 
@@ -150,12 +151,12 @@ export class SettingsScene extends Phaser.Scene {
     // endless mode toggle button 
     const isEndless = this.registry.get('endlessMode')
     const endlessBtn = this.add.nineslice(
-      GAME_WIDTH/2, GAME_HEIGHT/2 + 40,
+      GAME_WIDTH/2, GAME_HEIGHT/2 + 20,
       isEndless ? 'btn-green' : 'btn-grey',
       undefined, 280, 50, 8, 8, 8, 8
     ).setOrigin(0.5).setInteractive({ useHandCursor: true })
 
-    const endlessText = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 + 40,
+    const endlessText = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 + 20,
       'Endless Mode: ' + (isEndless ? 'ON' : 'OFF'), {
       fontSize: '18px', color: '#ffffff', fontStyle: 'bold',
       stroke: '#000000', strokeThickness: 3,
@@ -176,12 +177,12 @@ export class SettingsScene extends Phaser.Scene {
     // music toggle button
     const isMusicOn = this.registry.get(RegistryKey.MusicToggle)
     const musicBtn = this.add.nineslice(
-      GAME_WIDTH/2, GAME_HEIGHT/2 + 120,
+      GAME_WIDTH/2, GAME_HEIGHT/2 + 80,
       isMusicOn ? 'btn-green' : 'btn-red',
       undefined, 280, 50, 8, 8, 8, 8
     ).setOrigin(0.5).setInteractive({ useHandCursor: true })
 
-    const musicText = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 + 120,
+    const musicText = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 + 80,
       'Music: ' + (isMusicOn ? 'ON' : 'OFF'), {
       fontSize: '18px', color: '#ffffff', fontStyle: 'bold',
       stroke: '#000000', strokeThickness: 3,
@@ -198,8 +199,33 @@ export class SettingsScene extends Phaser.Scene {
       musicBtn.setTexture(nowOn ? 'btn-green' : 'btn-red')
     })
 
+
+    const movingCannonFlag = this.registry.get('movingCannon')
+    const movingCannonBtn = this.add.nineslice(
+      GAME_WIDTH/2, GAME_HEIGHT/2 + 140,
+      movingCannonFlag ? 'btn-green' : 'btn-grey',
+      undefined, 280, 50, 8, 8, 8, 8
+    ).setOrigin(0.5).setInteractive({ useHandCursor: true })
+
+    const movingCannonText = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 + 140,
+      'Moving Cannon: ' + (movingCannonFlag ? 'ON' : 'OFF'), {
+      fontSize: '18px', color: '#ffffff', fontStyle: 'bold',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(1)
+
+    movingCannonBtn.on('pointerover', () => movingCannonBtn.setScale(1.05))
+    movingCannonBtn.on('pointerout',  () => movingCannonBtn.setScale(1.0))
+    movingCannonBtn.on('pointerdown', () => {
+      this.sound.play('menu_click', { volume: 0.5 })
+      const current = this.registry.get(RegistryKey.MovingCannon)
+      this.registry.set(RegistryKey.MovingCannon, !current)
+      const nowOn = !current
+      movingCannonText.setText('Moving Cannon: ' + (nowOn ? 'ON' : 'OFF'))
+      movingCannonBtn.setTexture(nowOn ? 'btn-green' : 'btn-grey')
+    })
+
     // confirm button 
-    this.makeButton(GAME_WIDTH/2, GAME_HEIGHT/2 + 190, '✔  Confirm', 'btn-green', () => {
+    this.makeButton(GAME_WIDTH/2, GAME_HEIGHT/2 + 200, '✔  Confirm', 'btn-green', () => {
       this.sound.play('menu_click', { volume: 0.5 })
       if (this.scene.isPaused(SceneKey.Game)) {
         this.scene.stop(SceneKey.UI)
