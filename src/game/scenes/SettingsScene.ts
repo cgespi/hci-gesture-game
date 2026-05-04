@@ -36,6 +36,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 this.registry.set(RegistryKey.Difficulty, 'Easy')
                 this.registry.set(RegistryKey.BallSpeed, 1)
                 this.registry.set(RegistryKey.LaunchDelay, 2.0)
@@ -53,6 +54,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 this.registry.set(RegistryKey.Difficulty, 'Medium')
                 this.registry.set(RegistryKey.BallSpeed, 2)
                 this.registry.set(RegistryKey.LaunchDelay, 1.0)
@@ -70,6 +72,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 this.registry.set(RegistryKey.Difficulty, 'Hard')
                 this.registry.set(RegistryKey.BallSpeed, 3)
                 this.registry.set(RegistryKey.LaunchDelay, 0.5)
@@ -137,6 +140,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 if (this.registry.get('endlessMode')){
                     this.registry.set(RegistryKey.EndlessMode, false)
                     endlessButton.setColor('#ff0000')
@@ -161,6 +165,7 @@ export class SettingsScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                this.sound.play('menu_click', { volume: 0.5 })
                 if (this.scene.isPaused(SceneKey.Game)) {
                     this.scene.stop(SceneKey.UI)
                     this.scene.stop(SceneKey.Game)

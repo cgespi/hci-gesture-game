@@ -106,12 +106,12 @@ export const LANE_NEAR_POINTS: Record<Lane, { x: number; y: number }> = {
 // --- Optional pseudo-3D shadow (simple ellipse) ---
 
 export const SHADOW_COLOR = 0x000000
-export const SHADOW_MIN_ALPHA = 0.12
-export const SHADOW_MAX_ALPHA = 0.26
-export const SHADOW_WIDTH_RADIUS = BALL_RADIUS * 1.25
-export const SHADOW_HEIGHT_RADIUS = BALL_RADIUS * 0.45
-export const SHADOW_Y_OFFSET_MIN = 8
-export const SHADOW_Y_OFFSET_MAX = 18
+export const SHADOW_MIN_ALPHA = 0.15
+export const SHADOW_MAX_ALPHA = 0.45
+export const SHADOW_WIDTH_RADIUS = BALL_RADIUS * 3.5
+export const SHADOW_HEIGHT_RADIUS = BALL_RADIUS * 0.5
+export const SHADOW_Y_OFFSET_MIN = 2
+export const SHADOW_Y_OFFSET_MAX = 8
 
 // --- MediaPipe hand tracking tuning ---
 

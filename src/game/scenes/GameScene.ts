@@ -101,6 +101,10 @@ export class GameScene extends Phaser.Scene {
   private keyEnter!: Phaser.Input.Keyboard.Key
   private keyEsc!: Phaser.Input.Keyboard.Key
 
+  //moving cannon parameters
+  private cannonVelocityX = 80  // pixels per second
+
+
   constructor() {
     super({ key: SceneKey.Game })
   }
@@ -129,9 +133,160 @@ export class GameScene extends Phaser.Scene {
 
     const groundHeight = Math.round(GAME_HEIGHT * GROUND_HEIGHT_RATIO)
     const groundTopY = GAME_HEIGHT - groundHeight
-    this.add
-      .rectangle(0, groundTopY, GAME_WIDTH, groundHeight, GROUND_COLOR)
-      .setOrigin(0, 0)
+
+
+  // ── Ground base
+  this.add
+    .rectangle(0, groundTopY, GAME_WIDTH, groundHeight, GROUND_COLOR)
+    .setOrigin(0, 0)
+
+  // ── Grass detail 
+  this.add
+    .rectangle(0, groundTopY, GAME_WIDTH, 12, 0x2d7a2d)
+    .setOrigin(0, 0)
+    .setDepth(2)
+
+
+
+  //----------------//
+  // Court lines 
+  const court = this.add.graphics().setDepth(3)
+
+  // horizon)
+  const vpX = GAME_WIDTH / 2
+  const vpY = groundTopY  // horizon = where ground meets sky
+
+  // Court edge X positions at the bottom 
+  const leftEdgeNear  = GAME_WIDTH * 0.01
+  const rightEdgeNear = GAME_WIDTH * 0.99
+
+  // Singles sideline X positions at the bottom (slightly inset from edge)
+  const leftSinglesNear  = GAME_WIDTH * 0.18
+  const rightSinglesNear = GAME_WIDTH * 0.82
+
+  // Where those lines meet the net (horizon) 
+  const leftEdgeFar    = GAME_WIDTH * 0.22
+  const rightEdgeFar   = GAME_WIDTH * 0.78
+  const leftSinglesFar = GAME_WIDTH * 0.30
+  const rightSinglesFar= GAME_WIDTH * 0.70
+
+  court.lineStyle(2, 0xffffff, 0.6)
+
+  // ── Doubles sidelines (outer edges) ──
+  court.beginPath()
+  court.moveTo(leftEdgeNear, GAME_HEIGHT)
+  court.lineTo(leftEdgeFar, vpY)
+  court.strokePath()
+
+  court.beginPath()
+  court.moveTo(rightEdgeNear, GAME_HEIGHT)
+  court.lineTo(rightEdgeFar, vpY)
+  court.strokePath()
+
+  // ── Singles sidelines ──
+  court.beginPath()
+  court.moveTo(leftSinglesNear, GAME_HEIGHT)
+  court.lineTo(leftSinglesFar, vpY)
+  court.strokePath()
+
+  court.beginPath()
+  court.moveTo(rightSinglesNear, GAME_HEIGHT)
+  court.lineTo(rightSinglesFar, vpY)
+  court.strokePath()
+
+
+
+  //service line (halfway between baseline and net, perspective scaled)
+  // 
+  const serviceLineY = groundTopY + (GAME_HEIGHT - groundTopY) * 0.45
+  const serviceLineLeftX  = Phaser.Math.Linear(leftSinglesFar,  leftSinglesNear,  0.45)
+  const serviceLineRightX = Phaser.Math.Linear(rightSinglesFar, rightSinglesNear, 0.45)
+
+  court.lineStyle(2, 0xffffff, 0.5)
+  court.beginPath()
+  court.moveTo(serviceLineLeftX, serviceLineY)
+  court.lineTo(serviceLineRightX, serviceLineY)
+  court.strokePath()
+
+  // ── Center service line (T line — from service line to net, perspective) ──
+  const centerFarX  = vpX  // at the net it's dead center
+  const centerNearX = vpX  // also center (straight line down the middle)
+  court.beginPath()
+  court.moveTo(centerNearX, serviceLineY)
+  court.lineTo(centerFarX, vpY)
+  court.strokePath()
+
+
+
+  ///--------------------//
+  // ── Net
+  const net = this.add.graphics().setDepth(4)
+  const netX = GAME_WIDTH / 2
+  const netTopY = groundTopY - 60   // how tall the net is
+  const netBottomY = groundTopY
+  const netWidth = GAME_WIDTH*.56
+
+  // Net posts (left and right vertical poles)
+  net.lineStyle(4, 0xdddddd, 1)
+  net.beginPath()
+  net.moveTo(netX - netWidth / 2, netBottomY)
+  net.lineTo(netX - netWidth / 2, netTopY)
+  net.strokePath()
+
+  net.beginPath()
+  net.moveTo(netX + netWidth / 2, netBottomY)
+  net.lineTo(netX + netWidth / 2, netTopY)
+  net.strokePath()
+
+  // Net top cable
+  net.lineStyle(3, 0xffffff, 0.9)
+  net.beginPath()
+  net.moveTo(netX - netWidth / 2, netTopY)
+  net.lineTo(netX + netWidth / 2, netTopY)
+  net.strokePath()
+
+  // Net mesh (vertical lines)
+  net.lineStyle(1, 0xffffff, 0.4)
+  const meshCols = 30
+
+  for (let i = 1; i < meshCols; i++) {
+    const x = (netX - netWidth / 2) + (netWidth / meshCols) * i
+    net.beginPath()
+    net.moveTo(x, netTopY)
+    net.lineTo(x, netBottomY)
+    net.strokePath()
+  }
+
+  // Net mesh (horizontal lines)
+  const meshRows = 5
+  for (let i = 1; i < meshRows; i++) {
+    const y = netTopY + ((netBottomY - netTopY) / meshRows) * i
+    net.beginPath()
+    net.moveTo(netX - netWidth / 2, y)
+    net.lineTo(netX + netWidth / 2, y)
+    net.strokePath()
+  }
+
+  // ── Clouds #from kenney loaded in bootscene.ts//
+  this.add.image(120,  80,  'cloud1').setScale(0.6).setDepth(1).setAlpha(0.9)
+  this.add.image(400,  50,  'cloud2').setScale(0.45).setDepth(1).setAlpha(0.85)
+  this.add.image(720,  100, 'cloud3').setScale(0.7).setDepth(1).setAlpha(0.9)
+  this.add.image(980,  60,  'cloud1').setScale(0.5).setDepth(1).setAlpha(0.8)
+
+
+
+
+
+
+  //--------------------
+
+  //--- Side decorations
+
+  // Grass tufts on the sides
+  this.add.image(40,  groundTopY + 10, 'grass1').setScale(0.6).setDepth(3)
+  this.add.image(100, groundTopY + 10, 'grass2').setScale(0.5).setDepth(3)
+  this.add.image(GAME_WIDTH - 40,  groundTopY + 10, 'grass1').setScale(0.6).setDepth(3).setFlipX(true)
+  this.add.image(GAME_WIDTH - 100, groundTopY + 10, 'grass2').setScale(0.5).setDepth(3).setFlipX(true)
 
     // Place cannon directly on the sky/field boundary line.
     const cannonY = groundTopY
@@ -139,11 +294,11 @@ export class GameScene extends Phaser.Scene {
       .rectangle(GAME_WIDTH / 2, cannonY, CANNON_WIDTH, CANNON_HEIGHT, CANNON_COLOR)
       .setOrigin(0.5, 1)
 
-    // Shadow renders behind the ball and grows as it approaches.
+        // Shadow renders behind the ball and grows as it approaches.
     this.shadow = this.add
       .ellipse(this.cannon.x, this.cannon.y, SHADOW_WIDTH_RADIUS * 2, SHADOW_HEIGHT_RADIUS * 2, SHADOW_COLOR, SHADOW_MIN_ALPHA)
       .setOrigin(0.5, 0.5)
-      .setDepth(5)
+      .setDepth(6)  // above ground (0), grass strip (2), court lines (3), net (4)
 
     this.ball = this.add
       .circle(this.cannon.x, this.cannon.y - CANNON_HEIGHT - BALL_RADIUS, BALL_RADIUS, BALL_COLOR)
@@ -194,6 +349,17 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false)
 
     this.scene.launch(SceneKey.UI)
+
+
+
+
+    // Looping wind ambience or maybe music ?
+  this.sound.play('wind', { loop: true, volume: 0.35 })
+
+  // Stop wind when scene shuts down
+  this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    this.sound.stopByKey('wind')
+  })
     this.scene.bringToTop(SceneKey.UI)
     this.createDifficultyDebugDisplay()
 
@@ -211,6 +377,20 @@ export class GameScene extends Phaser.Scene {
 
     const dtMs = Math.min(deltaMs, 50)
     this.stateTimeMs += dtMs
+        // Move cannon left/right, bounce off edges
+    const cannonHalfWidth = CANNON_WIDTH / 2
+    const cannonMinX = GAME_WIDTH * 0.22 + cannonHalfWidth
+    const cannonMaxX = GAME_WIDTH * 0.78 - cannonHalfWidth
+
+    this.cannon.x += this.cannonVelocityX * (dtMs / 1000)
+    if (this.cannon.x >= cannonMaxX) {
+      this.cannon.x = cannonMaxX
+      this.cannonVelocityX = -Math.abs(this.cannonVelocityX)
+    }
+    if (this.cannon.x <= cannonMinX) {
+      this.cannon.x = cannonMinX
+      this.cannonVelocityX = Math.abs(this.cannonVelocityX)
+    }
 
     this.inputController.update(dtMs / 1000)
 
@@ -297,6 +477,7 @@ export class GameScene extends Phaser.Scene {
       this.currentShotInHitWindow = false
       this.hitZoneRect.setFillStyle(HIT_ZONE_COLOR, HIT_ZONE_FILL_ALPHA)
       this.ball.setFillStyle(BALL_COLOR)
+      this.shadow.setAlpha(0)  // hide shadow immediately on resolution
     }
 
     if (next === GameState.RoundOver) {
@@ -353,7 +534,7 @@ export class GameScene extends Phaser.Scene {
       minScale: BALL_MIN_SCALE,
       maxScale: BALL_MAX_SCALE,
     })
-
+    this.sound.play('ball_shoot', { volume: 0.5 })
     this.applyShotSnapshot(this.currentShot.getSnapshot())
   }
 
@@ -433,6 +614,11 @@ export class GameScene extends Phaser.Scene {
     this.previousShotY = s.y
 
     this.setBallAndShadow(s.x, s.y, s.scale, s.depth)
+
+
+
+
+    
 
     // Flash the same exact zone used by hit validation.
     const inHitWindow = this.isBallOverlappingHitZone(s.x, s.y, s.scale)
@@ -515,18 +701,31 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setBallAndShadow(x: number, y: number, scale: number, depth: number): void {
-    this.ball.setPosition(x, y)
-    this.ball.setScale(scale)
+      this.ball.setPosition(x, y)
+      this.ball.setScale(scale)
 
-    const shadowY = y + Phaser.Math.Linear(SHADOW_Y_OFFSET_MIN, SHADOW_Y_OFFSET_MAX, depth)
-    const shadowAlpha = Phaser.Math.Linear(SHADOW_MIN_ALPHA, SHADOW_MAX_ALPHA, depth)
-    this.shadow.setPosition(x, shadowY)
-    this.shadow.setScale(scale)
-    this.shadow.setAlpha(shadowAlpha)
-  }
+      const groundTopY = GAME_HEIGHT - Math.round(GAME_HEIGHT * GROUND_HEIGHT_RATIO)
+      
+      // Shadow Y travels from near the net (horizon) down toward the bottom of the screen
+      // as the ball approaches, matching the ball's X position
+      const shadowY = Phaser.Math.Linear(groundTopY + 5, GAME_HEIGHT - 20, depth)
+
+      // Shadow grows and darkens as ball gets closer
+      const shadowScale = Phaser.Math.Linear(.5, .5, depth)
+      const shadowAlpha = Phaser.Math.Linear(0.05, 0.5, depth)
+
+      this.shadow.setPosition(x, shadowY)
+      this.shadow.setScale(shadowScale)
+      this.shadow.setAlpha(shadowAlpha)
+    }
 
   private onSuccessfulHit(): void {
     this.shotResolved = true
+
+    //sfx
+    this.sound.play('ball_hit', { volume: 0.7 })
+    this.sound.play('hit_success', { volume: 0.4 })
+    //
     const hits = this.getHits()
     this.registry.set(RegistryKey.Hits, hits + 1)
     this.difficultyManager.updateOnHit()
@@ -534,6 +733,7 @@ export class GameScene extends Phaser.Scene {
 
   private onMissedShot(): void {
     this.shotResolved = true
+    this.sound.play('ball_miss', { volume: 0.3 })
     const misses = this.getMisses()
     this.registry.set(RegistryKey.Misses, misses + 1)
 
