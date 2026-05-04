@@ -28,6 +28,16 @@ export class BootScene extends Phaser.Scene {
   this.load.audio('ball_hit',   'sfx/tennis_hit1.mp3')
   this.load.audio('wind',       'sfx/wind_ambience.mp3')//replaced with some game music 
   this.load.audio('hit_success', 'sfx/hit_confirm1.mp3')
+
+  //menu 
+
+  this.load.image('btn-green',       'ui/Colored/green.png')
+  this.load.image('btn-green-press', 'ui/Colored/green_pressed.png')
+  this.load.image('btn-blue',        'ui/Colored/blue.png')
+  this.load.image('btn-blue-press',  'ui/Colored/blue_pressed.png')
+  this.load.image('btn-red',         'ui/Colored/red.png')
+  this.load.image('btn-red-press',   'ui/Colored/red_pressed.png')
+  this.load.image('btn-grey',        'ui/Colored/grey.png')
   }
 
   create() {

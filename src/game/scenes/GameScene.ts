@@ -313,6 +313,7 @@ export class GameScene extends Phaser.Scene {
     this.ball = this.add
       .circle(this.cannon.x, this.cannon.y - CANNON_HEIGHT - BALL_RADIUS, BALL_RADIUS, BALL_COLOR)
       .setDepth(10)
+      .setVisible(false)
 
     this.hitZoneRect = this.add
       .rectangle(0, HIT_ZONE_Y, HIT_ZONE_WIDTH, HIT_ZONE_HEIGHT, HIT_ZONE_COLOR, HIT_ZONE_FILL_ALPHA)
@@ -491,11 +492,11 @@ export class GameScene extends Phaser.Scene {
     this.stateTimeMs = 0
 
     if (next !== GameState.BallInFlight && next !== GameState.HitReturn && next !== GameState.MissFall) {
-      // Reset transient shot visuals when leaving flight.
+      // reset transient shot visuals when leaving flight.
       this.currentShotInHitWindow = false
       this.hitZoneRect.setFillStyle(HIT_ZONE_COLOR, HIT_ZONE_FILL_ALPHA)
       this.ball.setFillStyle(BALL_COLOR)
-      this.shadow.setAlpha(0)  // hide shadow immediately on resolution
+      this.shadow.setAlpha(0)  // hide shadow immediately on state
     }
 
     if (next === GameState.RoundOver) {
@@ -563,7 +564,7 @@ export class GameScene extends Phaser.Scene {
     const peakY = Math.min(start.y, end.y) - SHOT_ARC_HEIGHT_PX
     const control = new Phaser.Math.Vector2(peakX, peakY)
      this.aimCannonAt(control.x, control.y)
-
+ 
     this.currentShot = new PerspectiveShot({
       durationMs: this.computeShotDurationMs(this.difficultyManager.getCurrentLaunchSpeed()),
       endpoints: {
@@ -575,6 +576,7 @@ export class GameScene extends Phaser.Scene {
       maxScale: BALL_MAX_SCALE,
     })
     this.sound.play('ball_shoot', { volume: 0.5 })
+    this.ball.setVisible(true)
     this.applyShotSnapshot(this.currentShot.getSnapshot())
   }
 
