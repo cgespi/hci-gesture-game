@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { GAME_HEIGHT, GAME_WIDTH, SceneKey, RegistryKey} from '../constants.ts'
+import { GAME_HEIGHT, GAME_WIDTH, SceneKey, RegistryKey, MusicRef} from '../constants.ts'
 
 export class PauseScene extends Phaser.Scene {
   constructor() {
@@ -62,6 +62,9 @@ export class PauseScene extends Phaser.Scene {
             })
             .setInteractive({useHandCursor: true})
             .on('pointerdown',() => {
+                if (MusicRef.music){
+                    MusicRef.music.resume()
+                }
                 this.scene.resume(SceneKey.UI)
                 this.scene.resume(SceneKey.Game)
                 this.scene.stop()
