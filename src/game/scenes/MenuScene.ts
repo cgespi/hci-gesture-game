@@ -79,7 +79,7 @@ export class MenuScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5)
 
-    this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 95, 'HCI Gesture Game', {
+    this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 95, 'Reflex Strike', {
       fontSize: '34px', color: '#ffffff', fontStyle: 'bold',
       stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5)
